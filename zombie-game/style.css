@@ -1,104 +1,22 @@
-body {
-    margin: 0;
-    background-color: #1a1a1a;
-    color: white;
-    font-family: 'Courier New', Courier, monospace;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-    overflow: hidden;
-}
-
-#game-container {
-    position: relative;
-    box-shadow: 0 0 20px 5px rgba(0, 0, 0, 0.5);
-}
-
-canvas {
-    display: block;
-    background-color: #38423B; /* Grassy Green */
-    border: 3px solid #555;
-    cursor: crosshair;
-}
-
-#ui-container {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    right: 10px;
-    display: flex;
-    justify-content: space-between;
-    pointer-events: none;
-}
-
-.ui-box {
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
-    border-radius: 5px;
-    border: 2px solid #555;
-}
-
-#health-bar-container, #resource-display {
-    padding: 5px;
-}
-
-#health-bar {
-    width: 200px;
-    height: 20px;
-    background-color: #2ecc71;
-    border: 1px solid #aaa;
-}
-
-#wave-display, #wave-timer {
-    font-size: 1.8em;
-    font-weight: bold;
-    text-align: right;
-}
-
-#center-screen-ui {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 15px;
-}
-
-#start-wave-btn {
-    font-size: 2em;
-    padding: 15px 30px;
-    cursor: pointer;
-    background-color: #e67e22;
-    border: 3px solid white;
-    border-radius: 5px;
-    color: white;
-    font-weight: bold;
-    pointer-events: all; /* Make this button clickable */
-}
-
-#build-mode-indicator {
-    background-color: #3498db;
-    color: white;
-    padding: 10px 20px;
-    border-radius: 5px;
-    font-size: 1.5em;
-    font-weight: bold;
-}
-
-#game-over-screen {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(200, 50, 50, 0.85);
-    padding: 40px;
-    border-radius: 10px;
-    text-align: center;
-    border: 3px solid white;
-}
-
+body { margin: 0; background-color: #1a1a1a; color: white; font-family: 'Courier New', Courier, monospace; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+#game-container { position: relative; box-shadow: 0 0 20px 5px rgba(0, 0, 0, 0.5); }
+canvas { display: block; background-color: #38423B; border: 3px solid #555; cursor: crosshair; }
+#ui-container { position: absolute; top: 10px; left: 10px; right: 10px; display: flex; justify-content: space-between; pointer-events: none; }
+.ui-box { background-color: rgba(0, 0, 0, 0.5); padding: 10px; border-radius: 5px; border: 2px solid #555; }
+#health-bar-container, #resource-display { padding: 5px; }
+#health-bar { width: 200px; height: 20px; background-color: #2ecc71; border: 1px solid #aaa; }
+#wave-display, #wave-timer { font-size: 1.8em; font-weight: bold; text-align: right; }
+#center-screen-ui { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); display: flex; flex-direction: column; align-items: center; gap: 15px; pointer-events: none; }
+#build-mode-indicator, #shop-prompt { background-color: rgba(0, 0, 0, 0.6); color: white; padding: 10px 20px; border-radius: 5px; font-size: 1.2em; font-weight: bold; border: 2px solid #555; }
+#bottom-right-ui { position: absolute; bottom: 20px; right: 20px; pointer-events: none; }
+#start-wave-btn { font-size: 1.5em; padding: 10px 20px; cursor: pointer; background-color: #e67e22; border: 3px solid white; border-radius: 5px; color: white; font-weight: bold; pointer-events: all; }
+#shop-menu { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: #34495e; padding: 20px; border-radius: 10px; border: 3px solid #7f8c8d; width: 400px; z-index: 10; text-align: center; }
+#shop-menu h2 { margin-top: 0; }
+#shop-items { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+.shop-item { display: flex; justify-content: space-between; align-items: center; background-color: #2c3e50; padding: 10px; border-radius: 5px; }
+.shop-item button { background-color: #27ae60; color: white; border: none; padding: 8px 12px; border-radius: 5px; cursor: pointer; }
+.shop-item button:disabled { background-color: #95a5a6; cursor: not-allowed; }
+#close-shop-btn { padding: 10px 20px; font-size: 1em; cursor: pointer; }
+#game-over-screen { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background-color: rgba(200, 50, 50, 0.85); padding: 40px; border-radius: 10px; text-align: center; border: 3px solid white; z-index: 10; }
 #game-over-screen h1 { margin: 0; font-size: 4em; }
 #restart-btn { font-size: 1.5em; padding: 10px 20px; cursor: pointer; }
