@@ -1,0 +1,81 @@
+body {
+    margin: 0;
+    background-color: #1a1a1a;
+    color: white;
+    font-family: 'Courier New', Courier, monospace;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    overflow: hidden;
+}
+
+#game-container {
+    position: relative;
+    box-shadow: 0 0 20px 5px rgba(0, 0, 0, 0.5);
+}
+
+canvas {
+    display: block;
+    background-color: #333;
+    border: 3px solid #555;
+}
+
+#ui-container {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    right: 10px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    pointer-events: none;
+}
+
+#health-bar-container {
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 5px 10px;
+    border-radius: 5px;
+    border: 2px solid #555;
+}
+
+#health-bar {
+    width: 200px;
+    height: 20px;
+    background-color: #2ecc71;
+}
+
+#wave-display {
+    font-size: 2em;
+    font-weight: bold;
+    background-color: rgba(0, 0, 0, 0.5);
+    padding: 10px;
+    border-radius: 5px;
+    border: 2px solid #555;
+}
+
+#game-over-screen {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(200, 50, 50, 0.85);
+    padding: 40px;
+    border-radius: 10px;
+    text-align: center;
+    border: 3px solid white;
+}
+
+#game-over-screen h1 {
+    margin: 0;
+    font-size: 4em;
+}
+
+#restart-btn {
+    font-size: 1.5em;
+    padding: 10px 20px;
+    cursor: pointer;
+    background-color: #eee;
+    border: 2px solid #333;
+    border-radius: 5px;
+}
