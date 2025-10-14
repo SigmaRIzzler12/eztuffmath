@@ -17,8 +17,9 @@ body {
 
 canvas {
     display: block;
-    background-color: #333;
+    background-color: #38423B; /* Grassy Green */
     border: 3px solid #555;
+    cursor: crosshair;
 }
 
 #ui-container {
@@ -28,30 +29,63 @@ canvas {
     right: 10px;
     display: flex;
     justify-content: space-between;
-    align-items: center;
     pointer-events: none;
 }
 
-#health-bar-container {
+.ui-box {
     background-color: rgba(0, 0, 0, 0.5);
-    padding: 5px 10px;
+    padding: 10px;
     border-radius: 5px;
     border: 2px solid #555;
+}
+
+#health-bar-container, #resource-display {
+    padding: 5px;
 }
 
 #health-bar {
     width: 200px;
     height: 20px;
     background-color: #2ecc71;
+    border: 1px solid #aaa;
 }
 
-#wave-display {
-    font-size: 2em;
+#wave-display, #wave-timer {
+    font-size: 1.8em;
     font-weight: bold;
-    background-color: rgba(0, 0, 0, 0.5);
-    padding: 10px;
+    text-align: right;
+}
+
+#center-screen-ui {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+#start-wave-btn {
+    font-size: 2em;
+    padding: 15px 30px;
+    cursor: pointer;
+    background-color: #e67e22;
+    border: 3px solid white;
     border-radius: 5px;
-    border: 2px solid #555;
+    color: white;
+    font-weight: bold;
+    pointer-events: all; /* Make this button clickable */
+}
+
+#build-mode-indicator {
+    background-color: #3498db;
+    color: white;
+    padding: 10px 20px;
+    border-radius: 5px;
+    font-size: 1.5em;
+    font-weight: bold;
 }
 
 #game-over-screen {
@@ -66,16 +100,5 @@ canvas {
     border: 3px solid white;
 }
 
-#game-over-screen h1 {
-    margin: 0;
-    font-size: 4em;
-}
-
-#restart-btn {
-    font-size: 1.5em;
-    padding: 10px 20px;
-    cursor: pointer;
-    background-color: #eee;
-    border: 2px solid #333;
-    border-radius: 5px;
-}
+#game-over-screen h1 { margin: 0; font-size: 4em; }
+#restart-btn { font-size: 1.5em; padding: 10px 20px; cursor: pointer; }
