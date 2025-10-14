@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Zombie Survival</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="game-container">
+        <canvas id="gameCanvas"></canvas>
+        
+        <div id="ui-container">
+            <div id="health-bar-container">
+                <span>HEALTH</span>
+                <div id="health-bar"></div>
+            </div>
+            <div id="wave-display">WAVE: 1</div>
+        </div>
+
+        <div id="game-over-screen" style="display: none;">
+            <h1>GAME OVER</h1>
+            <p>You survived <span id="final-wave-count">0</span> waves.</p>
+            <button id="restart-btn">Play Again</button>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>
