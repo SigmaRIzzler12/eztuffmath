@@ -41,7 +41,7 @@ let destroyedResources = [];
 let keys = {}, mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
 let shopOpen = false; let camera = { x: 0, y: 0 }; let lastActionTime = 0; let intermissionInterval;
 
-// --- Image Loading (PATHS FIXED) ---
+// --- Image Loading (Paths Fixed) ---
 const images = {
     gun: new Image(), gun1: new Image(), gun2: new Image(),
     axe: new Image(), pickaxe: new Image(), rock: new Image(), tree: new Image()
