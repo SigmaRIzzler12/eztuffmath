@@ -1,305 +1,75 @@
-* {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
+* { margin: 0; padding: 0; box-sizing: border-box; }
+body { font-family: 'Arial', sans-serif; overflow: hidden; background-color: #1a1a1a; }
+#game-container { position: relative; width: 100vw; height: 100vh; overflow: hidden; }
+#gameCanvas { display: block; background-color: #2a2a2a; cursor: crosshair; }
+#ui { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; }
+#ui > * { pointer-events: auto; }
 
-body {
-    font-family: 'Arial', sans-serif;
-    overflow: hidden;
-    background-color: #1a1a1a;
-}
-
-#game-container {
-    position: relative;
-    width: 100vw;
-    height: 100vh;
-    overflow: hidden;
-}
-
-#gameCanvas {
-    display: block;
-    background-color: #2a2a2a;
-    cursor: crosshair;
-}
-
-#ui {
+/* NEW: Equipped Item UI */
+#equipped-item-ui {
     position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    pointer-events: none;
-}
-
-#ui > * {
-    pointer-events: auto;
-}
-
-/* NEW: Top Center Feedback Message */
-#feedback-message {
-    position: absolute;
-    top: 20px;
+    bottom: 20px;
     left: 50%;
     transform: translateX(-50%);
-    background-color: rgba(0, 0, 0, 0.8);
-    color: white;
-    padding: 10px 25px;
-    border-radius: 8px;
-    font-size: 18px;
-    font-weight: bold;
-    border: 2px solid #ffd700;
-    z-index: 50;
-    transition: opacity 0.5s, top 0.5s;
-}
-
-/* Top Left - Stats */
-#top-left {
-    position: absolute;
-    top: 20px;
-    left: 20px;
     background-color: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border-radius: 10px;
-    color: white;
-    min-width: 200px;
-}
-
-#health-container {
-    margin-bottom: 10px;
-    position: relative;
-}
-
-#health-bar {
-    width: 100%;
-    height: 25px;
-    background-color: #333;
-    border-radius: 5px;
-    overflow: hidden;
-    position: relative;
-}
-
-#health-bar::after {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: var(--health-width, 100%); /* Controlled by JS */
-    background: linear-gradient(90deg, #ff4444, #ff6666);
-    transition: width 0.3s;
-}
-
-#health-text {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    color: white;
-    font-weight: bold;
-    font-size: 14px;
-    text-shadow: 1px 1px 2px black;
-    z-index: 1;
-}
-
-.resource {
-    margin: 8px 0;
-    font-size: 16px;
-    font-weight: bold;
-}
-
-/* Top Right - Wave Info */
-#top-right {
-    position: absolute;
-    top: 20px;
-    right: 20px;
-    background-color: rgba(0, 0, 0, 0.7);
-    padding: 15px;
-    border-radius: 10px;
-    color: white;
-    text-align: right;
-}
-
-#wave-info {
-    font-size: 20px;
-    font-weight: bold;
-    margin-bottom: 10px;
-    color: #ffd700;
-}
-
-#timer-container {
-    font-size: 18px;
-}
-
-#timer {
-    font-weight: bold;
-    color: #66ff66;
-}
-
-/* Bottom Right - Start Wave Button */
-#bottom-right {
-    position: absolute;
-    bottom: 30px;
-    right: 30px;
-}
-
-.game-btn {
-    padding: 15px 30px;
-    font-size: 18px;
-    font-weight: bold;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4);
-}
-
-.game-btn:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6);
-}
-
-.game-btn:active {
-    transform: translateY(0);
-}
-
-#start-wave-btn {
-    background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
-}
-
-/* Order Station */
-#order-station {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.8);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 100;
-}
-
-#order-station-content {
-    background-color: #2a2a2a;
-    padding: 30px;
-    border-radius: 15px;
-    max-width: 600px;
-    width: 90%;
-    color: white;
-    text-align: center;
-}
-
-#order-station-content h2 {
-    font-size: 28px;
-    margin-bottom: 10px;
-    color: #ffd700;
-}
-
-#order-station-content > p {
-    margin-bottom: 20px;
-    color: #aaa;
-}
-
-#shop-items {
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    margin-bottom: 20px;
-}
-
-.shop-item {
-    background-color: #3a3a3a;
-    padding: 20px;
+    padding: 10px 15px;
     border-radius: 10px;
     border: 2px solid #555;
-}
-
-.shop-item h3 {
-    font-size: 20px;
-    margin-bottom: 8px;
-    color: #66ff66;
-}
-
-.shop-item p {
-    margin: 5px 0;
-    color: #ccc;
-}
-
-.shop-item .price {
-    font-weight: bold;
-    color: #ffd700;
-    font-size: 18px;
-}
-
-.buy-btn {
-    padding: 10px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
     color: white;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.buy-btn:hover {
-    transform: scale(1.05);
-}
-
-.buy-btn:disabled {
-    background: #555;
-    cursor: not-allowed;
-    opacity: 0.5;
-}
-
-.owned {
-    display: inline-block;
-    margin-left: 10px;
-    color: #66ff66;
     font-weight: bold;
 }
+#equipped-item-img {
+    width: 50px;
+    height: 50px;
+    object-fit: contain;
+}
+
+/* Feedback Message */
+#feedback-message { position: absolute; top: 20px; left: 50%; transform: translateX(-50%); background-color: rgba(0, 0, 0, 0.8); color: white; padding: 10px 25px; border-radius: 8px; font-size: 18px; font-weight: bold; border: 2px solid #ffd700; z-index: 50; transition: opacity 0.5s, top 0.5s; }
+
+/* Top Left - Stats */
+#top-left { position: absolute; top: 20px; left: 20px; background-color: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 10px; color: white; min-width: 200px; }
+#health-container { margin-bottom: 10px; position: relative; }
+#health-bar { width: 100%; height: 25px; background-color: #333; border-radius: 5px; overflow: hidden; position: relative; }
+#health-bar::after { content: ''; position: absolute; top: 0; left: 0; height: 100%; width: var(--health-width, 100%); background: linear-gradient(90deg, #ff4444, #ff6666); transition: width 0.3s; }
+#health-text { position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); color: white; font-weight: bold; font-size: 14px; text-shadow: 1px 1px 2px black; z-index: 1; }
+.resource { margin: 8px 0; font-size: 16px; font-weight: bold; }
+
+/* Top Right - Wave Info */
+#top-right { position: absolute; top: 20px; right: 20px; background-color: rgba(0, 0, 0, 0.7); padding: 15px; border-radius: 10px; color: white; text-align: right; }
+#wave-info { font-size: 20px; font-weight: bold; margin-bottom: 10px; color: #ffd700; }
+#timer-container { font-size: 18px; }
+#timer { font-weight: bold; color: #66ff66; }
+
+/* Bottom Right - Start Wave Button */
+#bottom-right { position: absolute; bottom: 30px; right: 30px; }
+.game-btn { padding: 15px 30px; font-size: 18px; font-weight: bold; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; cursor: pointer; transition: transform 0.2s, box-shadow 0.2s; box-shadow: 0 4px 15px rgba(0, 0, 0, 0.4); }
+.game-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6); }
+.game-btn:active { transform: translateY(0); }
+#start-wave-btn { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+
+/* Order Station */
+#order-station { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.8); display: flex; justify-content: center; align-items: center; z-index: 100; }
+#order-station-content { background-color: #2a2a2a; padding: 30px; border-radius: 15px; max-width: 600px; width: 90%; color: white; text-align: center; }
+#order-station-content h2 { font-size: 28px; margin-bottom: 10px; color: #ffd700; }
+#order-station-content > p { margin-bottom: 20px; color: #aaa; }
+#shop-items { display: flex; flex-direction: column; gap: 15px; margin-bottom: 20px; }
+.shop-item { background-color: #3a3a3a; padding: 20px; border-radius: 10px; border: 2px solid #555; }
+.shop-item h3 { font-size: 20px; margin-bottom: 8px; color: #66ff66; }
+.shop-item p { margin: 5px 0; color: #ccc; }
+.shop-item .price { font-weight: bold; color: #ffd700; font-size: 18px; }
+.buy-btn { padding: 10px 20px; font-size: 16px; font-weight: bold; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 5px; cursor: pointer; transition: all 0.2s; }
+.buy-btn:hover { transform: scale(1.05); }
+.buy-btn:disabled { background: #555; cursor: not-allowed; opacity: 0.5; }
+.owned { display: inline-block; margin-left: 10px; color: #66ff66; font-weight: bold; }
 
 /* Game Over */
-#game-over {
-    position: absolute;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-color: rgba(0, 0, 0, 0.95);
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    z-index: 200;
-}
-
-#game-over-content {
-    text-align: center;
-    color: white;
-}
-
-#game-over-content h1 {
-    font-size: 60px;
-    color: #ff4444;
-    margin-bottom: 20px;
-    text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.8);
-}
-
-#game-over-content p {
-    font-size: 24px;
-    margin-bottom: 30px;
-}
-
-#play-again-btn {
-    font-size: 20px;
-}
-
-/* Hidden class */
-.hidden {
-    display: none !important;
-}
+#game-over { position: absolute; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.95); display: flex; justify-content: center; align-items: center; z-index: 200; }
+#game-over-content { text-align: center; color: white; }
+#game-over-content h1 { font-size: 60px; color: #ff4444; margin-bottom: 20px; text-shadow: 3px 3px 10px rgba(0, 0, 0, 0.8); }
+#game-over-content p { font-size: 24px; margin-bottom: 30px; }
+#play-again-btn { font-size: 20px; }
+.hidden { display: none !important; }
