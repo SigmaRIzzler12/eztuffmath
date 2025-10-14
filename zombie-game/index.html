@@ -12,12 +12,29 @@
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui-container">
-            <div id="health-bar-container">
-                <span>HEALTH</span>
-                <div id="health-bar"></div>
+            <div class="ui-box">
+                <div id="health-bar-container">
+                    <span>HEALTH</span>
+                    <div id="health-bar"></div>
+                </div>
+                <div id="resource-display">
+                    <div>WOOD: <span id="wood-count">0</span></div>
+                    <div>STONE: <span id="stone-count">0</span></div>
+                    <div>CASH: $<span id="cash-count">0</span></div>
+                </div>
             </div>
-            <div id="wave-display">WAVE: 1</div>
+
+            <div class="ui-box">
+                <div id="wave-display">WAVE: 1</div>
+                <div id="wave-timer"></div>
+            </div>
         </div>
+
+        <div id="center-screen-ui">
+            <button id="start-wave-btn" style="display: none;">START WAVE</button>
+            <div id="build-mode-indicator" style="display: none;">BUILD MODE</div>
+        </div>
+
 
         <div id="game-over-screen" style="display: none;">
             <h1>GAME OVER</h1>
