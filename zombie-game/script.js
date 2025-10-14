@@ -1,150 +1,385 @@
-// Canvas Setup
+// --- Canvas Setup ---
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
-// Game Constants
+// --- UI Elements ---
+const healthBar = document.getElementById('health-bar');
+const healthText = document.getElementById('health-text');
+const woodCountEl = document.getElementById('wood-count');
+const stoneCountEl = document.getElementById('stone-count');
+const cashCountEl = document.getElementById('cash-count');
+const waveNumberEl = document.getElementById('wave-number');
+const timerEl = document.getElementById('timer');
+const timerContainer = document.getElementById('timer-container');
+const startWaveBtn = document.getElementById('start-wave-btn');
+const buildModeIndicator = document.getElementById('build-mode-indicator');
+const orderStation = document.getElementById('order-station');
+const closeShopBtn = document.getElementById('close-shop-btn');
+const gameOverScreen = document.getElementById('game-over');
+const finalWaveEl = document.getElementById('final-wave');
+const playAgainBtn = document.getElementById('play-again-btn');
+
+// --- Game Constants ---
 const WORLD_SIZE = 3000;
 const GRID_SIZE = 50;
 const PLAYER_SIZE = 20;
 const ZOMBIE_SIZE = 18;
 const TREE_SIZE = 30;
-const ROCK_SIZE = 35;
+const ROCK_SIZE = 25; // Adjusted for better visuals
 const WALL_SIZE = 50;
 const BULLET_SIZE = 5;
-const BULLET_SPEED = 10;
+const BULLET_SPEED = 12;
 const INTERMISSION_TIME = 60;
 
-// Game State
-let gameState = {
-    phase: 'intermission', // 'intermission' or 'wave'
-    wave: 1,
-    intermissionTimer: INTERMISSION_TIME,
-    gameOver: false
-};
+// --- Game State ---
+let gameState = { phase: 'intermission', wave: 1, intermissionTimer: INTERMISSION_TIME, gameOver: false };
+let player, zombies, trees, rocks, walls, bullets;
+let keys = {}, mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
+let buildMode = false, shopOpen = false;
+let camera = { x: 0, y: 0 };
+let lastShotTime = 0;
+let intermissionInterval;
 
-// Player
-let player = {
-    x: WORLD_SIZE / 2,
-    y: WORLD_SIZE / 2,
-    radius: PLAYER_SIZE,
-    speed: 5,
-    health: 100,
-    maxHealth: 100,
-    angle: 0,
-    resources: { wood: 0, stone: 0, cash: 0 },
-    inventory: { axe: true, pickaxe: false, betterGun: false },
-    lastChopTime: 0,
-    damage: 10,
-    fireRate: 300
-};
-
-// Input
-let keys = {};
-let mouse = { x: 0, y: 0, worldX: 0, worldY: 0, down: false };
-let buildMode = false;
-let shopOpen = false;
-
-// Camera
-let camera = {
-    x: player.x - canvas.width / 2,
-    y: player.y - canvas.height / 2
-};
-
-// Game Objects
-let zombies = [];
-let trees = [];
-let rocks = [];
-let walls = [];
-let bullets = [];
-
-// Gun Image
+// --- Gun Image ---
 let gunImg = new Image();
 gunImg.src = 'gun.png';
 let gunLoaded = false;
 gunImg.onload = () => { gunLoaded = true; };
-gunImg.onerror = () => { console.log('Gun image not found, using rectangle'); };
 
-// Initialize
+// --- Initialization ---
 function init() {
+    // Reset state
+    gameState = { phase: 'intermission', wave: 1, intermissionTimer: INTERMISSION_TIME, gameOver: false };
+    player = {
+        x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius: PLAYER_SIZE, speed: 4, health: 100, maxHealth: 100,
+        angle: 0, resources: { wood: 0, stone: 0, cash: 100 }, inventory: { axe: true, pickaxe: false, betterGun: false },
+        lastChopTime: 0, damage: 10, fireRate: 300
+    };
+    zombies = []; trees = []; rocks = []; walls = []; bullets = [];
+    buildMode = false; shopOpen = false;
+    
+    // Generate world
     generateTrees();
     generateRocks();
-    updateUI();
-    
-    // Event Listeners
-    window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; handleKeyPress(e); });
-    window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-    canvas.addEventListener('mousemove', handleMouseMove);
-    canvas.addEventListener('mousedown', handleMouseDown);
-    canvas.addEventListener('mouseup', () => { mouse.down = false; });
-    document.getElementById('start-wave-btn').addEventListener('click', startWave);
-    document.getElementById('close-shop-btn').addEventListener('click', toggleShop);
-    document.getElementById('play-again-btn').addEventListener('click', resetGame);
-    
-    // Shop buy buttons
+
+    // Reset UI
+    gameOverScreen.classList.add('hidden');
+    orderStation.classList.add('hidden');
+    startWaveBtn.classList.remove('hidden');
+    timerContainer.classList.remove('hidden');
+    buildModeIndicator.classList.add('hidden');
     document.querySelectorAll('.buy-btn').forEach(btn => {
-        btn.addEventListener('click', (e) => buyItem(e.target.dataset.item, parseInt(e.target.dataset.cost)));
+        btn.disabled = false;
+        const ownedEl = btn.nextElementSibling;
+        if(ownedEl && ownedEl.classList.contains('owned')) {
+            ownedEl.classList.add('hidden');
+        }
     });
-    
+
+    updateUI();
+    startIntermission();
     gameLoop();
 }
 
 function generateTrees() {
-    const centerX = WORLD_SIZE / 2;
-    const centerY = WORLD_SIZE / 2;
-    const innerRadius = 300;
-    const outerRadius = 800;
-    
+    const centerX = WORLD_SIZE / 2, centerY = WORLD_SIZE / 2;
+    const innerRadius = 400, outerRadius = 800;
     for (let i = 0; i < 60; i++) {
         const angle = Math.random() * Math.PI * 2;
         const distance = innerRadius + Math.random() * (outerRadius - innerRadius);
-        trees.push({
-            x: centerX + Math.cos(angle) * distance,
-            y: centerY + Math.sin(angle) * distance,
-            health: 10,
-            maxHealth: 10,
-            radius: TREE_SIZE
-        });
+        trees.push({ x: centerX + Math.cos(angle) * distance, y: centerY + Math.sin(angle) * distance, health: 10, maxHealth: 10, radius: TREE_SIZE });
     }
 }
 
 function generateRocks() {
-    const centerX = WORLD_SIZE / 2;
-    const centerY = WORLD_SIZE / 2;
-    const innerRadius = 900;
-    const outerRadius = 1300;
-    
+    const centerX = WORLD_SIZE / 2, centerY = WORLD_SIZE / 2;
+    const innerRadius = 900, outerRadius = 1300;
     for (let i = 0; i < 40; i++) {
         const angle = Math.random() * Math.PI * 2;
         const distance = innerRadius + Math.random() * (outerRadius - innerRadius);
-        rocks.push({
-            x: centerX + Math.cos(angle) * distance,
-            y: centerY + Math.sin(angle) * distance,
-            health: 15,
-            maxHealth: 15,
-            radius: ROCK_SIZE
+        rocks.push({ x: centerX + Math.cos(angle) * distance, y: centerY + Math.sin(angle) * distance, health: 15, maxHealth: 15, radius: ROCK_SIZE });
+    }
+}
+
+// --- Game Loop and Updates ---
+function gameLoop() {
+    if (gameState.gameOver) return;
+    updateGame();
+    drawGame();
+    requestAnimationFrame(gameLoop);
+}
+
+function updateGame() {
+    if (shopOpen) return;
+
+    // Player movement
+    let dx = 0, dy = 0;
+    if (keys['w']) dy -= 1;
+    if (keys['s']) dy += 1;
+    if (keys['a']) dx -= 1;
+    if (keys['d']) dx += 1;
+
+    if (dx !== 0 || dy !== 0) {
+        const len = Math.sqrt(dx * dx + dy * dy);
+        player.x += (dx / len) * player.speed;
+        player.y += (dy / len) * player.speed;
+        player.x = Math.max(player.radius, Math.min(WORLD_SIZE - player.radius, player.x));
+        player.y = Math.max(player.radius, Math.min(WORLD_SIZE - player.radius, player.y));
+    }
+
+    // Update camera to follow player
+    camera.x = player.x - canvas.width / 2;
+    camera.y = player.y - canvas.height / 2;
+    camera.x = Math.max(0, Math.min(WORLD_SIZE - canvas.width, camera.x));
+    camera.y = Math.max(0, Math.min(WORLD_SIZE - canvas.height, camera.y));
+
+    // Update bullets
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        b.x += b.vx;
+        b.y += b.vy;
+        if (b.x < 0 || b.x > WORLD_SIZE || b.y < 0 || b.y > WORLD_SIZE) {
+            bullets.splice(i, 1);
+        }
+    }
+
+    // Update zombies
+    for (const z of zombies) {
+        const z_dx = player.x - z.x;
+        const z_dy = player.y - z.y;
+        const dist = Math.hypot(z_dx, z_dy);
+        if (dist > 0) {
+            z.x += (z_dx / dist) * z.speed;
+            z.y += (z_dy / dist) * z.speed;
+        }
+    }
+
+    handleCollisions();
+
+    if (gameState.phase === 'wave' && zombies.length === 0) {
+        endWave();
+    }
+}
+
+function handleCollisions() {
+    // Bullets vs Zombies & Walls
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        let hit = false;
+        // vs Walls
+        for (const wall of walls) {
+            if (b.x > wall.x && b.x < wall.x + wall.width && b.y > wall.y && b.y < wall.y + wall.height) {
+                bullets.splice(i, 1);
+                hit = true;
+                break;
+            }
+        }
+        if (hit) continue;
+        // vs Zombies
+        for (let j = zombies.length - 1; j >= 0; j--) {
+            const z = zombies[j];
+            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius + b.radius) {
+                z.health -= b.damage;
+                bullets.splice(i, 1);
+                if (z.health <= 0) {
+                    player.resources.cash += 10;
+                    zombies.splice(j, 1);
+                    updateUI();
+                }
+                hit = true;
+                break;
+            }
+        }
+        if (hit) continue;
+    }
+
+    // Zombies vs Player
+    for (const z of zombies) {
+        if (Math.hypot(z.x - player.x, z.y - player.y) < z.radius + player.radius) {
+            player.health -= z.damage; // FIXED DAMAGE CALCULATION
+            if (player.health <= 0) {
+                player.health = 0;
+                gameOver();
+            }
+            updateUI();
+        }
+    }
+}
+
+// --- Drawing ---
+function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Move canvas to camera position
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+
+    // Draw world elements
+    ctx.fillStyle = '#3a5a3a';
+    ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    
+    trees.forEach(drawResource);
+    rocks.forEach(drawResource);
+    walls.forEach(drawWall);
+    zombies.forEach(drawZombie);
+    bullets.forEach(drawBullet);
+    drawPlayer();
+
+    ctx.restore();
+}
+
+function drawPlayer() {
+    // Player body
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Player Gun
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    if (gunLoaded) {
+        const gunWidth = player.inventory.betterGun ? 40 : 30;
+        const gunHeight = player.inventory.betterGun ? 20 : 15;
+        ctx.drawImage(gunImg, 10, -gunHeight / 2, gunWidth, gunHeight);
+    } else {
+        ctx.fillStyle = '#333';
+        ctx.fillRect(10, -5, 25, 10);
+    }
+    ctx.restore();
+}
+
+function drawZombie(z) {
+    ctx.fillStyle = '#2d5c2d';
+    ctx.beginPath();
+    ctx.arc(z.x, z.y, z.radius, 0, Math.PI * 2);
+    ctx.fill();
+    drawHealthBar(z, '#ff4444');
+}
+
+function drawWall(wall) {
+    ctx.fillStyle = '#8B4513';
+    ctx.strokeStyle = '#654321';
+    ctx.lineWidth = 2;
+    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+}
+
+function drawBullet(b) {
+    ctx.fillStyle = '#ffff00';
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, Math.PI * 2);
+    ctx.fill();
+}
+
+function drawResource(res) {
+    ctx.fillStyle = res.radius === TREE_SIZE ? '#2d5016' : '#666';
+    ctx.beginPath();
+    ctx.arc(res.x, res.y, res.radius, 0, Math.PI * 2);
+    ctx.fill();
+    if (res.health < res.maxHealth) {
+        drawHealthBar(res, res.radius === TREE_SIZE ? '#4CAF50' : '#999');
+    }
+}
+
+function drawHealthBar(entity, color) {
+    const barWidth = entity.radius * 2;
+    const barHeight = 5;
+    const yOffset = entity.radius + 10;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(entity.x - barWidth / 2, entity.y - yOffset, barWidth, barHeight);
+    ctx.fillStyle = color;
+    ctx.fillRect(entity.x - barWidth / 2, entity.y - yOffset, barWidth * (entity.health / entity.maxHealth), barHeight);
+}
+
+// --- Wave and Game State Logic ---
+function startIntermission() {
+    gameState.phase = 'intermission';
+    gameState.intermissionTimer = INTERMISSION_TIME;
+    timerContainer.classList.remove('hidden');
+    startWaveBtn.classList.remove('hidden');
+    
+    intermissionInterval = setInterval(() => {
+        gameState.intermissionTimer--;
+        updateUI();
+        if (gameState.intermissionTimer <= 0) {
+            startWave();
+        }
+    }, 1000);
+}
+
+function startWave() {
+    if (gameState.phase !== 'intermission') return;
+    clearInterval(intermissionInterval);
+    gameState.phase = 'wave';
+    buildMode = false;
+    buildModeIndicator.classList.add('hidden');
+    startWaveBtn.classList.add('hidden');
+    timerContainer.classList.add('hidden');
+    spawnZombies();
+}
+
+function endWave() {
+    gameState.wave++;
+    updateUI();
+    startIntermission();
+}
+
+function spawnZombies() {
+    const count = 5 + gameState.wave * 3;
+    for (let i = 0; i < count; i++) {
+        const side = Math.floor(Math.random() * 4);
+        let x, y;
+        switch (side) {
+            case 0: x = Math.random() * WORLD_SIZE; y = -ZOMBIE_SIZE; break;
+            case 1: x = WORLD_SIZE + ZOMBIE_SIZE; y = Math.random() * WORLD_SIZE; break;
+            case 2: x = Math.random() * WORLD_SIZE; y = WORLD_SIZE + ZOMBIE_SIZE; break;
+            case 3: x = -ZOMBIE_SIZE; y = Math.random() * WORLD_SIZE; break;
+        }
+        zombies.push({
+            x, y, radius: ZOMBIE_SIZE, speed: 1.5 + gameState.wave * 0.1,
+            health: 30 + gameState.wave * 5, maxHealth: 30 + gameState.wave * 5, damage: 5
         });
     }
 }
 
-function handleKeyPress(e) {
-    if (gameState.gameOver) return;
-    
-    if (e.key.toLowerCase() === 'q' && gameState.phase === 'intermission') {
-        buildMode = !buildMode;
-        document.getElementById('build-mode-indicator').classList.toggle('hidden', !buildMode);
-    }
-    
-    if (e.key.toLowerCase() === 'b' && gameState.phase === 'intermission') {
-        toggleShop();
-    }
+function gameOver() {
+    gameState.gameOver = true;
+    clearInterval(intermissionInterval);
+    finalWaveEl.textContent = gameState.wave;
+    gameOverScreen.classList.remove('hidden');
 }
 
-function toggleShop() {
-    if (gameState.phase !== 'intermission' || gameState.gameOver) return;
-    shopOpen = !shopOpen;
-    document.getElementById('order-station').classList.toggle('hidden', !shopOpen);
+// --- UI and Input Handlers ---
+function updateUI() {
+    // Health
+    const healthPercent = (player.health / player.maxHealth) * 100;
+    healthBar.style.width = healthPercent + '%';
+    healthText.textContent = `${Math.ceil(player.health)}/${player.maxHealth}`;
+    
+    // Resources
+    woodCountEl.textContent = player.resources.wood;
+    stoneCountEl.textContent = player.resources.stone;
+    cashCountEl.textContent = player.resources.cash;
+
+    // Wave and Timer
+    waveNumberEl.textContent = gameState.wave;
+    timerEl.textContent = gameState.intermissionTimer;
+}
+
+function handleKeyPress(e) {
+    if (gameState.gameOver) return;
+    const key = e.key.toLowerCase();
+    if (key === 'q' && gameState.phase === 'intermission') {
+        buildMode = !buildMode;
+        buildModeIndicator.classList.toggle('hidden', !buildMode);
+    }
+    if (key === 'b' && gameState.phase === 'intermission') {
+        toggleShop();
+    }
 }
 
 function handleMouseMove(e) {
@@ -152,100 +387,29 @@ function handleMouseMove(e) {
     mouse.y = e.clientY;
     mouse.worldX = mouse.x + camera.x;
     mouse.worldY = mouse.y + camera.y;
-    
-    // Update player angle
-    const dx = mouse.worldX - player.x;
-    const dy = mouse.worldY - player.y;
-    player.angle = Math.atan2(dy, dx);
+    player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
 }
 
-function handleMouseDown(e) {
+function handleMouseDown() {
     if (gameState.gameOver || shopOpen) return;
-    mouse.down = true;
-    
+
     if (buildMode && gameState.phase === 'intermission') {
         placeWall();
     } else {
-        // Check for resource gathering
         if (!checkResourceGathering()) {
-            // Fire weapon
             shoot();
         }
     }
 }
 
-function placeWall() {
-    const gridX = Math.floor(mouse.worldX / GRID_SIZE) * GRID_SIZE;
-    const gridY = Math.floor(mouse.worldY / GRID_SIZE) * GRID_SIZE;
-    
-    // Check if wall already exists
-    const exists = walls.some(w => w.x === gridX && w.y === gridY);
-    if (exists) return;
-    
-    // Check cost
-    if (player.resources.stone >= 10) {
-        player.resources.stone -= 10;
-        walls.push({ x: gridX, y: gridY, width: WALL_SIZE, height: WALL_SIZE });
-        updateUI();
-    }
-}
-
-function checkResourceGathering() {
-    const now = Date.now();
-    if (now - player.lastChopTime < 2000) return false;
-    
-    // Check trees
-    for (let i = trees.length - 1; i >= 0; i--) {
-        const tree = trees[i];
-        const dist = Math.hypot(mouse.worldX - tree.x, mouse.worldY - tree.y);
-        if (dist < tree.radius + 20) {
-            if (player.inventory.axe) {
-                tree.health--;
-                player.lastChopTime = now;
-                
-                if (tree.health <= 0) {
-                    player.resources.wood += 10;
-                    trees.splice(i, 1);
-                }
-                updateUI();
-                return true;
-            }
-        }
-    }
-    
-    // Check rocks
-    for (let i = rocks.length - 1; i >= 0; i--) {
-        const rock = rocks[i];
-        const dist = Math.hypot(mouse.worldX - rock.x, mouse.worldY - rock.y);
-        if (dist < rock.radius + 20) {
-            if (player.inventory.pickaxe) {
-                rock.health--;
-                player.lastChopTime = now;
-                
-                if (rock.health <= 0) {
-                    player.resources.stone += 15;
-                    rocks.splice(i, 1);
-                }
-                updateUI();
-                return true;
-            }
-        }
-    }
-    
-    return false;
-}
-
-let lastShotTime = 0;
-
 function shoot() {
     const now = Date.now();
     if (now - lastShotTime < player.fireRate) return;
-    
     lastShotTime = now;
     
     bullets.push({
-        x: player.x,
-        y: player.y,
+        x: player.x + Math.cos(player.angle) * 20,
+        y: player.y + Math.sin(player.angle) * 20,
         vx: Math.cos(player.angle) * BULLET_SPEED,
         vy: Math.sin(player.angle) * BULLET_SPEED,
         radius: BULLET_SIZE,
@@ -253,431 +417,93 @@ function shoot() {
     });
 }
 
-function buyItem(item, cost) {
-    if (player.resources.cash >= cost) {
-        player.resources.cash -= cost;
-        
-        if (item === 'pickaxe') {
-            player.inventory.pickaxe = true;
-            document.querySelector('[data-item="pickaxe"]').disabled = true;
-            document.querySelector('[data-item="pickaxe"]').nextElementSibling.classList.remove('hidden');
-        } else if (item === 'better-gun') {
-            player.inventory.betterGun = true;
-            player.damage = 20;
-            player.fireRate = 150;
-            document.querySelector('[data-item="better-gun"]').disabled = true;
-            document.querySelector('[data-item="better-gun"]').nextElementSibling.classList.remove('hidden');
-        }
-        
-        updateUI();
-    }
+function placeWall() {
+    if (player.resources.stone < 10) return;
+    const gridX = Math.floor(mouse.worldX / GRID_SIZE) * GRID_SIZE;
+    const gridY = Math.floor(mouse.worldY / GRID_SIZE) * GRID_SIZE;
+    if (walls.some(w => w.x === gridX && w.y === gridY)) return;
+    
+    player.resources.stone -= 10;
+    walls.push({ x: gridX, y: gridY, width: WALL_SIZE, height: WALL_SIZE });
+    updateUI();
 }
 
-function startWave() {
-    if (gameState.phase !== 'intermission') return;
-    
-    gameState.phase = 'wave';
-    buildMode = false;
-    document.getElementById('build-mode-indicator').classList.add('hidden');
-    document.getElementById('start-wave-btn').classList.add('hidden');
-    document.getElementById('timer-container').classList.add('hidden');
-    
-    spawnZombies();
-}
+function checkResourceGathering() {
+    const now = Date.now();
+    if (now - player.lastChopTime < 2000) return false;
 
-function spawnZombies() {
-    const count = 5 + gameState.wave * 3;
-    
-    for (let i = 0; i < count; i++) {
-        const side = Math.floor(Math.random() * 4);
-        let x, y;
-        
-        switch(side) {
-            case 0: x = Math.random() * WORLD_SIZE; y = 0; break;
-            case 1: x = WORLD_SIZE; y = Math.random() * WORLD_SIZE; break;
-            case 2: x = Math.random() * WORLD_SIZE; y = WORLD_SIZE; break;
-            case 3: x = 0; y = Math.random() * WORLD_SIZE; break;
-        }
-        
-        zombies.push({
-            x, y,
-            radius: ZOMBIE_SIZE,
-            speed: 1.5 + gameState.wave * 0.1,
-            health: 30 + gameState.wave * 5,
-            maxHealth: 30 + gameState.wave * 5,
-            damage: 5
-        });
-    }
-}
-
-function updateGame() {
-    if (gameState.gameOver || shopOpen) return;
-    
-    // Update intermission timer
-    if (gameState.phase === 'intermission') {
-        gameState.intermissionTimer -= 1/60;
-        if (gameState.intermissionTimer <= 0) {
-            startWave();
-        }
-        updateTimerUI();
-    }
-    
-    // Player movement
-    let dx = 0, dy = 0;
-    if (keys['w']) dy -= 1;
-    if (keys['s']) dy += 1;
-    if (keys['a']) dx -= 1;
-    if (keys['d']) dx += 1;
-    
-    if (dx !== 0 || dy !== 0) {
-        const len = Math.sqrt(dx*dx + dy*dy);
-        dx /= len; dy /= len;
-        player.x += dx * player.speed;
-        player.y += dy * player.speed;
-        
-        // Keep player in bounds
-        player.x = Math.max(player.radius, Math.min(WORLD_SIZE - player.radius, player.x));
-        player.y = Math.max(player.radius, Math.min(WORLD_SIZE - player.radius, player.y));
-    }
-    
-    // Update camera
-    camera.x = player.x - canvas.width / 2;
-    camera.y = player.y - canvas.height / 2;
-    camera.x = Math.max(0, Math.min(WORLD_SIZE - canvas.width, camera.x));
-    camera.y = Math.max(0, Math.min(WORLD_SIZE - canvas.height, camera.y));
-    
-    // Update bullets
-    for (let i = bullets.length - 1; i >= 0; i--) {
-        const b = bullets[i];
-        b.x += b.vx;
-        b.y += b.vy;
-        
-        // Remove if out of bounds
-        if (b.x < 0 || b.x > WORLD_SIZE || b.y < 0 || b.y > WORLD_SIZE) {
-            bullets.splice(i, 1);
-            continue;
-        }
-        
-        // Check wall collision
-        let hitWall = false;
-        for (const wall of walls) {
-            if (b.x > wall.x && b.x < wall.x + wall.width &&
-                b.y > wall.y && b.y < wall.y + wall.height) {
-                hitWall = true;
-                break;
+    // Check trees
+    for (let i = trees.length - 1; i >= 0; i--) {
+        const tree = trees[i];
+        if (player.inventory.axe && Math.hypot(mouse.worldX - tree.x, mouse.worldY - tree.y) < tree.radius) {
+            tree.health--;
+            player.lastChopTime = now;
+            if (tree.health <= 0) {
+                player.resources.wood += 20;
+                trees.splice(i, 1);
             }
-        }
-        if (hitWall) {
-            bullets.splice(i, 1);
-            continue;
-        }
-        
-        // Check zombie collision
-        for (let j = zombies.length - 1; j >= 0; j--) {
-            const z = zombies[j];
-            const dist = Math.hypot(b.x - z.x, b.y - z.y);
-            if (dist < z.radius + b.radius) {
-                z.health -= b.damage;
-                bullets.splice(i, 1);
-                
-                if (z.health <= 0) {
-                    player.resources.cash += 5;
-                    zombies.splice(j, 1);
-                    updateUI();
-                }
-                break;
-            }
-        }
-    }
-    
-    // Update zombies
-    for (const z of zombies) {
-        const dx = player.x - z.x;
-        const dy = player.y - z.y;
-        const dist = Math.hypot(dx, dy);
-        
-        if (dist > 0) {
-            let moveX = (dx / dist) * z.speed;
-            let moveY = (dy / dist) * z.speed;
-            
-            // Wall collision for zombies
-            let canMove = true;
-            for (const wall of walls) {
-                if (z.x + moveX + z.radius > wall.x && z.x + moveX - z.radius < wall.x + wall.width &&
-                    z.y + moveY + z.radius > wall.y && z.y + moveY - z.radius < wall.y + wall.height) {
-                    canMove = false;
-                    break;
-                }
-            }
-            
-            if (canMove) {
-                z.x += moveX;
-                z.y += moveY;
-            }
-        }
-        
-        // Check player collision
-        const playerDist = Math.hypot(z.x - player.x, z.y - player.y);
-        if (playerDist < z.radius + player.radius) {
-            player.health -= z.damage * 0.1;
             updateUI();
-            
-            if (player.health <= 0) {
-                gameOver();
-            }
+            return true;
         }
     }
-    
-    // Check wave completion
-    if (gameState.phase === 'wave' && zombies.length === 0) {
-        endWave();
+    // Check rocks
+    for (let i = rocks.length - 1; i >= 0; i--) {
+        const rock = rocks[i];
+        if (player.inventory.pickaxe && Math.hypot(mouse.worldX - rock.x, mouse.worldY - rock.y) < rock.radius) {
+            rock.health--;
+            player.lastChopTime = now;
+            if (rock.health <= 0) {
+                player.resources.stone += 15;
+                rocks.splice(i, 1);
+            }
+            updateUI();
+            return true;
+        }
     }
+    return false;
 }
 
-function endWave() {
-    gameState.phase = 'intermission';
-    gameState.wave++;
-    gameState.intermissionTimer = INTERMISSION_TIME;
-    
-    document.getElementById('start-wave-btn').classList.remove('hidden');
-    document.getElementById('timer-container').classList.remove('hidden');
-    updateUI();
+// --- Shop Logic ---
+function toggleShop() {
+    if (gameState.phase !== 'intermission' || gameState.gameOver) return;
+    shopOpen = !shopOpen;
+    orderStation.classList.toggle('hidden', !shopOpen);
 }
 
-function gameOver() {
-    gameState.gameOver = true;
-    document.getElementById('final-wave').textContent = gameState.wave;
-    document.getElementById('game-over').classList.remove('hidden');
-}
-
-function resetGame() {
-    // Reset game state
-    gameState = { phase: 'intermission', wave: 1, intermissionTimer: INTERMISSION_TIME, gameOver: false };
-    player = {
-        x: WORLD_SIZE / 2, y: WORLD_SIZE / 2, radius: PLAYER_SIZE, speed: 5,
-        health: 100, maxHealth: 100, angle: 0,
-        resources: { wood: 0, stone: 0, cash: 0 },
-        inventory: { axe: true, pickaxe: false, betterGun: false },
-        lastChopTime: 0, damage: 10, fireRate: 300
-    };
+function buyItem(item, cost) {
+    if (player.resources.cash < cost) return;
+    player.resources.cash -= cost;
     
-    zombies = [];
-    bullets = [];
-    trees = [];
-    rocks = [];
-    walls = [];
-    buildMode = false;
-    shopOpen = false;
+    if (item === 'pickaxe') {
+        player.inventory.pickaxe = true;
+    } else if (item === 'better-gun') {
+        player.inventory.betterGun = true;
+        player.damage = 25;
+        player.fireRate = 150;
+    }
     
-    generateTrees();
-    generateRocks();
-    
-    document.getElementById('game-over').classList.add('hidden');
-    document.getElementById('start-wave-btn').classList.remove('hidden');
-    document.getElementById('timer-container').classList.remove('hidden');
-    document.getElementById('build-mode-indicator').classList.add('hidden');
-    document.getElementById('order-station').classList.add('hidden');
-    
-    // Reset shop
-    document.querySelectorAll('.buy-btn').forEach(btn => {
-        btn.disabled = false;
-        btn.nextElementSibling.classList.add('hidden');
-    });
+    const btn = document.querySelector(`.buy-btn[data-item="${item}"]`);
+    btn.disabled = true;
+    const ownedEl = btn.nextElementSibling;
+    if(ownedEl && ownedEl.classList.contains('owned')) {
+        ownedEl.classList.remove('hidden');
+    }
     
     updateUI();
 }
 
-function drawGame() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    
-    // Draw world background
-    ctx.fillStyle = '#3a5a3a';
-    ctx.fillRect(-camera.x, -camera.y, WORLD_SIZE, WORLD_SIZE);
-    
-    // Draw grid in build mode
-    if (buildMode) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.2)';
-        ctx.lineWidth = 1;
-        
-        const startX = Math.floor(camera.x / GRID_SIZE) * GRID_SIZE;
-        const startY = Math.floor(camera.y / GRID_SIZE) * GRID_SIZE;
-        
-        for (let x = startX; x < camera.x + canvas.width; x += GRID_SIZE) {
-            ctx.beginPath();
-            ctx.moveTo(x - camera.x, 0);
-            ctx.lineTo(x - camera.x, canvas.height);
-            ctx.stroke();
-        }
-        
-        for (let y = startY; y < camera.y + canvas.height; y += GRID_SIZE) {
-            ctx.beginPath();
-            ctx.moveTo(0, y - camera.y);
-            ctx.lineTo(canvas.width, y - camera.y);
-            ctx.stroke();
-        }
-    }
-    
-    // Draw trees
-    ctx.fillStyle = '#2d5016';
-    for (const tree of trees) {
-        const screenX = tree.x - camera.x;
-        const screenY = tree.y - camera.y;
-        
-        if (screenX > -50 && screenX < canvas.width + 50 && screenY > -50 && screenY < canvas.height + 50) {
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, tree.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Health bar
-            if (tree.health < tree.maxHealth) {
-                const barWidth = tree.radius * 2;
-                const barHeight = 5;
-                ctx.fillStyle = '#333';
-                ctx.fillRect(screenX - barWidth/2, screenY - tree.radius - 10, barWidth, barHeight);
-                ctx.fillStyle = '#4CAF50';
-                ctx.fillRect(screenX - barWidth/2, screenY - tree.radius - 10, barWidth * (tree.health / tree.maxHealth), barHeight);
-            }
-        }
-    }
-    
-    // Draw rocks
-    ctx.fillStyle = '#666';
-    for (const rock of rocks) {
-        const screenX = rock.x - camera.x;
-        const screenY = rock.y - camera.y;
-        
-        if (screenX > -50 && screenX < canvas.width + 50 && screenY > -50 && screenY < canvas.height + 50) {
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, rock.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Health bar
-            if (rock.health < rock.maxHealth) {
-                const barWidth = rock.radius * 2;
-                const barHeight = 5;
-                ctx.fillStyle = '#333';
-                ctx.fillRect(screenX - barWidth/2, screenY - rock.radius - 10, barWidth, barHeight);
-                ctx.fillStyle = '#999';
-                ctx.fillRect(screenX - barWidth/2, screenY - rock.radius - 10, barWidth * (rock.health / rock.maxHealth), barHeight);
-            }
-        }
-    }
-    
-    // Draw walls
-    ctx.fillStyle = '#8B4513';
-    ctx.strokeStyle = '#654321';
-    ctx.lineWidth = 2;
-    for (const wall of walls) {
-        const screenX = wall.x - camera.x;
-        const screenY = wall.y - camera.y;
-        
-        if (screenX > -WALL_SIZE && screenX < canvas.width + WALL_SIZE && 
-            screenY > -WALL_SIZE && screenY < canvas.height + WALL_SIZE) {
-            ctx.fillRect(screenX, screenY, wall.width, wall.height);
-            ctx.strokeRect(screenX, screenY, wall.width, wall.height);
-        }
-    }
-    
-    // Draw zombies
-    for (const z of zombies) {
-        const screenX = z.x - camera.x;
-        const screenY = z.y - camera.y;
-        
-        if (screenX > -50 && screenX < canvas.width + 50 && screenY > -50 && screenY < canvas.height + 50) {
-            // Body
-            ctx.fillStyle = '#2d5c2d';
-            ctx.beginPath();
-            ctx.arc(screenX, screenY, z.radius, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Eyes
-            ctx.fillStyle = '#ff0000';
-            ctx.beginPath();
-            ctx.arc(screenX - 5, screenY - 3, 3, 0, Math.PI * 2);
-            ctx.arc(screenX + 5, screenY - 3, 3, 0, Math.PI * 2);
-            ctx.fill();
-            
-            // Health bar
-            const barWidth = z.radius * 2;
-            const barHeight = 5;
-            ctx.fillStyle = '#333';
-            ctx.fillRect(screenX - barWidth/2, screenY - z.radius - 10, barWidth, barHeight);
-            ctx.fillStyle = '#ff4444';
-            ctx.fillRect(screenX - barWidth/2, screenY - z.radius - 10, barWidth * (z.health / z.maxHealth), barHeight);
-        }
-    }
-    
-    // Draw bullets
-    ctx.fillStyle = '#ffff00';
-    for (const b of bullets) {
-        const screenX = b.x - camera.x;
-        const screenY = b.y - camera.y;
-        
-        ctx.beginPath();
-        ctx.arc(screenX, screenY, b.radius, 0, Math.PI * 2);
-        ctx.fill();
-    }
-    
-    // Draw player
-    const playerScreenX = player.x - camera.x;
-    const playerScreenY = player.y - camera.y;
-    
-    ctx.fillStyle = '#00ffff';
-    ctx.beginPath();
-    ctx.arc(playerScreenX, playerScreenY, player.radius, 0, Math.PI * 2);
-    ctx.fill();
-    
-    // Draw gun
-    ctx.save();
-    ctx.translate(playerScreenX, playerScreenY);
-    ctx.rotate(player.angle);
-    
-    if (gunLoaded) {
-        const gunWidth = 30;
-        const gunHeight = 15;
-        ctx.drawImage(gunImg, 0, -gunHeight/2, gunWidth, gunHeight);
-    } else {
-        // Fallback rectangle gun
-        ctx.fillStyle = '#333';
-        ctx.fillRect(0, -5, 25, 10);
-    }
-    
-    ctx.restore();
-}
-
-function updateUI() {
-    // Health
-    const healthBar = document.getElementById('health-bar');
-    const healthPercent = (player.health / player.maxHealth) * 100;
-    healthBar.style.setProperty('--health-width', healthPercent + '%');
-    healthBar.style.width = healthPercent + '%';
-    document.getElementById('health-text').textContent = `${Math.max(0, Math.floor(player.health))}/${player.maxHealth}`;
-    
-    // Resources
-    document.getElementById('wood-count').textContent = player.resources.wood;
-    document.getElementById('stone-count').textContent = player.resources.stone;
-    document.getElementById('cash-count').textContent = player.resources.cash;
-    
-    // Wave
-    document.getElementById('wave-number').textContent = gameState.wave;
-}
-
-function updateTimerUI() {
-    const timer = Math.max(0, Math.ceil(gameState.intermissionTimer));
-    document.getElementById('timer').textContent = timer;
-}
-
-function gameLoop() {
-    updateGame();
-    drawGame();
-    requestAnimationFrame(gameLoop);
-}
-
-// Handle window resize
-window.addEventListener('resize', () => {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
+// --- Event Listeners ---
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; handleKeyPress(e); });
+window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
+canvas.addEventListener('mousemove', handleMouseMove);
+canvas.addEventListener('mousedown', handleMouseDown);
+startWaveBtn.addEventListener('click', startWave);
+closeShopBtn.addEventListener('click', toggleShop);
+playAgainBtn.addEventListener('click', init);
+document.querySelectorAll('.buy-btn').forEach(btn => {
+    btn.addEventListener('click', () => buyItem(btn.dataset.item, parseInt(btn.dataset.cost)));
 });
 
-// Start the game
+// --- Start Game ---
 init();
