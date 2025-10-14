@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rock Paper Scissors Online</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <div id="maintenance-screen" style="display: none;">
+        <h2>Down for Maintenance</h2>
+        <p>The game is currently unavailable. Please check back later.</p>
+    </div>
+
+    <div id="connection-ui">
+        <h2>Rock Paper Scissors Online</h2>
+        <div id="status-text"></div>
+        <hr>
+        <h3>Public Matchmaking</h3>
+        <button id="find-match-btn">Find a Random Opponent</button>
+        <hr>
+        <h3>Private Game</h3>
+        <input type="text" id="room-code-input" placeholder="Enter Room Code">
+        <button id="join-room-btn">Join Room</button>
+        <p>or</p>
+        <button id="create-room-btn">Create a New Room</button>
+    </div>
+
+    <div id="game-container" style="display: none;">
+        <canvas id="gameCanvas"></canvas>
+        <div id="game-overlays">
+            <div id="score-display">You: 0 - Opponent: 0</div>
+            <div id="timer-display"></div>
+            <h2 id="game-status-display">Choose your weapon!</h2>
+            <div id="choices">
+                <button class="choice-btn" id="rock-btn">✊ Rock</button>
+                <button class="choice-btn" id="paper-btn">✋ Paper</button>
+                <button class="choice-btn" id="scissors-btn">✌️ Scissors</button>
+            </div>
+            <button id="play-again-btn" style="display: none;">Play Again</button>
+            <button id="rematch-btn" style="display: none;">Rematch</button>
+            <button id="leave-match-btn">Leave Match</button>
+        </div>
+    </div>
+
+    <audio id="bg-music" src="https://cdn.pixabay.com/download/audio/2022/11/22/audio_a2b1022248.mp3" loop></audio>
+
+    <script src="https://unpkg.com/peerjs@1.5.2/dist/peerjs.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
