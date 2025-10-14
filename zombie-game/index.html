@@ -10,9 +10,9 @@
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
-        <!-- UI Elements -->
         <div id="ui">
-            <!-- Top Left - Stats -->
+            <div id="feedback-message" class="hidden"></div>
+
             <div id="top-left">
                 <div id="health-container">
                     <div id="health-bar"></div>
@@ -29,7 +29,6 @@
                 </div>
             </div>
 
-            <!-- Top Right - Wave Info -->
             <div id="top-right">
                 <div id="wave-info">Wave: <span id="wave-number">1</span></div>
                 <div id="timer-container">
@@ -38,23 +37,14 @@
                 </div>
             </div>
 
-            <!-- Bottom Right - Start Wave Button -->
             <div id="bottom-right">
                 <button id="start-wave-btn" class="game-btn">START WAVE</button>
             </div>
 
-            <!-- Build Mode Indicator -->
-            <div id="build-mode-indicator" class="hidden">
-                <span>🔨 BUILD MODE ACTIVE</span>
-                <p>Click to place walls (Cost: 10 Stone)</p>
-                <p>Press Q to exit</p>
-            </div>
-
-            <!-- Order Station Menu -->
             <div id="order-station" class="hidden">
                 <div id="order-station-content">
                     <h2>Order Station</h2>
-                    <p>Purchase items with Cash</p>
+                    <p>Purchase items with Cash. Press 'B' to close.</p>
                     <div id="shop-items">
                         <div class="shop-item">
                             <h3>⛏️ Pickaxe</h3>
@@ -71,11 +61,9 @@
                             <span class="owned hidden">✓ Owned</span>
                         </div>
                     </div>
-                    <button id="close-shop-btn" class="game-btn">Close (B)</button>
                 </div>
             </div>
 
-            <!-- Game Over Screen -->
             <div id="game-over" class="hidden">
                 <div id="game-over-content">
                     <h1>GAME OVER</h1>
@@ -85,7 +73,6 @@
             </div>
         </div>
     </div>
-
     <script src="script.js"></script>
 </body>
 </html>
