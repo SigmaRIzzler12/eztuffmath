@@ -3,53 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie Survival</title>
+    <title>Zombie Survival Game</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-
     <div id="game-container">
         <canvas id="gameCanvas"></canvas>
         
-        <div id="ui-container">
-            <div class="ui-box">
-                <div id="health-bar-container">
-                    <span>HEALTH</span>
+        <!-- UI Elements -->
+        <div id="ui">
+            <!-- Top Left - Stats -->
+            <div id="top-left">
+                <div id="health-container">
                     <div id="health-bar"></div>
+                    <span id="health-text">100/100</span>
                 </div>
-                <div id="resource-display">
-                    <div>WOOD: <span id="wood-count">0</span></div>
-                    <div>STONE: <span id="stone-count">0</span></div>
-                    <div>CASH: $<span id="cash-count">0</span></div>
+                <div class="resource">
+                    <span>🪵 Wood: <span id="wood-count">0</span></span>
+                </div>
+                <div class="resource">
+                    <span>🪨 Stone: <span id="stone-count">0</span></span>
+                </div>
+                <div class="resource">
+                    <span>💰 Cash: $<span id="cash-count">0</span></span>
                 </div>
             </div>
 
-            <div class="ui-box">
-                <div id="wave-display">WAVE: 1</div>
-                <div id="wave-timer"></div>
-            </div>
-        </div>
-
-        <div id="center-screen-ui">
-            <div id="build-mode-indicator" style="display: none;">BUILD MODE [Q]</div>
-             <div id="shop-prompt" style="display: none;">Press [B] to open Shop</div>
-        </div>
-
-        <div id="bottom-right-ui">
-            <button id="start-wave-btn" style="display: none;">START WAVE</button>
-        </div>
-
-        <div id="shop-menu" style="display: none;">
-            <h2>Order Station</h2>
-            <div id="shop-items">
+            <!-- Top Right - Wave Info -->
+            <div id="top-right">
+                <div id="wave-info">Wave: <span id="wave-number">1</span></div>
+                <div id="timer-container">
+                    <span id="timer-label">Intermission:</span>
+                    <span id="timer">60</span>s
                 </div>
-            <button id="close-shop-btn">Close [B]</button>
-        </div>
+            </div>
 
-        <div id="game-over-screen" style="display: none;">
-            <h1>GAME OVER</h1>
-            <p>You survived <span id="final-wave-count">0</span> waves.</p>
-            <button id="restart-btn">Play Again</button>
+            <!-- Bottom Right - Start Wave Button -->
+            <div id="bottom-right">
+                <button id="start-wave-btn" class="game-btn">START WAVE</button>
+            </div>
+
+            <!-- Build Mode Indicator -->
+            <div id="build-mode-indicator" class="hidden">
+                <span>🔨 BUILD MODE ACTIVE</span>
+                <p>Click to place walls (Cost: 10 Stone)</p>
+                <p>Press Q to exit</p>
+            </div>
+
+            <!-- Order Station Menu -->
+            <div id="order-station" class="hidden">
+                <div id="order-station-content">
+                    <h2>Order Station</h2>
+                    <p>Purchase items with Cash</p>
+                    <div id="shop-items">
+                        <div class="shop-item">
+                            <h3>⛏️ Pickaxe</h3>
+                            <p>Allows you to mine rocks for stone</p>
+                            <p class="price">Cost: $50</p>
+                            <button class="buy-btn" data-item="pickaxe" data-cost="50">Buy</button>
+                            <span class="owned hidden">✓ Owned</span>
+                        </div>
+                        <div class="shop-item">
+                            <h3>🔫 Better Gun</h3>
+                            <p>Increased damage and fire rate</p>
+                            <p class="price">Cost: $100</p>
+                            <button class="buy-btn" data-item="better-gun" data-cost="100">Buy</button>
+                            <span class="owned hidden">✓ Owned</span>
+                        </div>
+                    </div>
+                    <button id="close-shop-btn" class="game-btn">Close (B)</button>
+                </div>
+            </div>
+
+            <!-- Game Over Screen -->
+            <div id="game-over" class="hidden">
+                <div id="game-over-content">
+                    <h1>GAME OVER</h1>
+                    <p>You survived to Wave <span id="final-wave">1</span></p>
+                    <button id="play-again-btn" class="game-btn">Play Again</button>
+                </div>
+            </div>
         </div>
     </div>
 
