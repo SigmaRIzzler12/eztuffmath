@@ -25,7 +25,6 @@ const playAgainBtn = document.getElementById('play-again-btn');
 // --- Game Constants & State ---
 const WORLD_SIZE = 3000; const PLAYER_SIZE = 20; const GATHER_RANGE = 60; const ZOMBIE_SIZE = 18; const TREE_SIZE = 30; const ROCK_SIZE = 25; const WALL_SIZE = 50; const GRID_SIZE = 50; const BULLET_SIZE = 5; const BULLET_SPEED = 12; const INTERMISSION_TIME = 60;
 let gameState, player, zombies, trees, rocks, walls, bullets;
-// NEW: Array to track destroyed resources for respawning
 let destroyedResources = [];
 let keys = {}, mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
 let shopOpen = false; let camera = { x: 0, y: 0 }; let lastActionTime = 0; let intermissionInterval;
@@ -47,7 +46,7 @@ function init() {
     };
     setWeaponStats();
     zombies = []; trees = []; rocks = []; walls = []; bullets = [];
-    destroyedResources = []; // Reset graveyard
+    destroyedResources = [];
     shopOpen = false;
     generateTrees();
     generateRocks();
@@ -66,20 +65,146 @@ function init() {
     else { const loadCheck = setInterval(() => { if (imagesLoaded === totalImages) { clearInterval(loadCheck); gameLoop(); } }, 100); }
 }
 
-function setWeaponStats() { /* ... no changes ... */ }
-function gameLoop() { /* ... no changes ... */ }
-function updateGame() { /* ... no changes ... */ }
-function handleCollisions() { /* ... no changes ... */ }
-function drawGame() { /* ... no changes ... */ }
-function drawPlayer() { /* ... no changes ... */ }
-function updateUI() { /* ... no changes ... */ }
-function handleKeyPress(e) { /* ... no changes ... */ }
-function handleMouseDown() { /* ... no changes ... */ }
-function shoot() { /* ... no changes ... */ }
-function placeWall() { /* ... no changes ... */ }
-function buyItem(item, cost) { /* ... no changes ... */ }
+// --- Game Logic ---
+function setWeaponStats() {
+    switch(player.equipped) {
+        case 'rifle': player.damage = 8; player.fireRate = 100; break;
+        case 'shotgun': player.damage = 12; player.fireRate = 800; break;
+        case 'pistol': default: player.damage = 10; player.fireRate = 400; break;
+    }
+}
 
-// --- Wave and Game State Logic ---
+function gameLoop() { if (gameState.gameOver) return; updateGame(); drawGame(); requestAnimationFrame(gameLoop); }
+
+function updateGame() {
+    if (shopOpen) return;
+    let dx = 0, dy = 0; if (keys['w']) dy -= 1; if (keys['s']) dy += 1; if (keys['a']) dx -= 1; if (keys['d']) dx += 1;
+    if (dx !== 0 || dy !== 0) { const len = Math.sqrt(dx * dx + dy * dy); player.x += (dx / len) * player.speed; player.y += (dy / len) * player.speed; player.x = Math.max(player.radius, Math.min(WORLD_SIZE - player.radius, player.x)); player.y = Math.max(player.radius, Math.min(WORLD_SIZE - player.radius, player.y)); }
+    camera.x = player.x - canvas.width / 2; camera.y = player.y - canvas.height / 2; camera.x = Math.max(0, Math.min(WORLD_SIZE - canvas.width, camera.x)); camera.y = Math.max(0, Math.min(WORLD_SIZE - canvas.height, camera.y));
+    for (let i = bullets.length - 1; i >= 0; i--) { const b = bullets[i]; b.x += b.vx; b.y += b.vy; if (b.x < 0 || b.x > WORLD_SIZE || b.y < 0 || b.y > WORLD_SIZE) { bullets.splice(i, 1); } }
+    for (const z of zombies) { const z_dx = player.x - z.x; const z_dy = player.y - z.y; const dist = Math.hypot(z_dx, z_dy); if (dist > 0) { z.x += (z_dx / dist) * z.speed; z.y += (z_dy / dist) * z.speed; } }
+    handleCollisions();
+    if (gameState.phase === 'wave' && zombies.length === 0) { endWave(); }
+}
+
+function handleCollisions() {
+    for (let i = bullets.length - 1; i >= 0; i--) {
+        const b = bullets[i];
+        let hit = false;
+        for (const wall of walls) {
+            if (b.x > wall.x && b.x < wall.x + wall.width && b.y > wall.y && b.y < wall.y + wall.height) {
+                bullets.splice(i, 1);
+                hit = true;
+                break;
+            }
+        }
+        if (hit) continue;
+        for (let j = zombies.length - 1; j >= 0; j--) {
+            const z = zombies[j];
+            if (Math.hypot(b.x - z.x, b.y - z.y) < z.radius + b.radius) {
+                z.health -= b.damage;
+                bullets.splice(i, 1);
+                if (z.health <= 0) {
+                    player.resources.cash += 10;
+                    zombies.splice(j, 1);
+                    updateUI();
+                }
+                hit = true;
+                break;
+            }
+        }
+        if (hit) continue;
+    }
+    for (const z of zombies) {
+        if (Math.hypot(z.x - player.x, z.y - player.y) < z.radius + player.radius) {
+            player.health -= z.damage;
+            if (player.health <= 0) {
+                player.health = 0;
+                gameOver();
+            }
+            updateUI();
+        }
+    }
+}
+
+function drawGame() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.save();
+    ctx.translate(-camera.x, -camera.y);
+    ctx.fillStyle = '#3a5a3a';
+    ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
+    trees.forEach(drawResource);
+    rocks.forEach(drawResource);
+    walls.forEach(drawWall);
+    zombies.forEach(drawZombie);
+    bullets.forEach(drawBullet);
+    drawPlayer();
+    ctx.restore();
+}
+
+function drawPlayer() {
+    ctx.fillStyle = '#00ffff';
+    ctx.beginPath();
+    ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.save();
+    ctx.translate(player.x, player.y);
+    ctx.rotate(player.angle);
+    let itemKey = player.equipped;
+    let imgToDraw;
+    if (itemKey === 'pistol') imgToDraw = images.gun;
+    if (itemKey === 'rifle') imgToDraw = images.gun1;
+    if (itemKey === 'shotgun') imgToDraw = images.gun2;
+    if (itemKey === 'axe') imgToDraw = images.axe;
+    if (itemKey === 'pickaxe') imgToDraw = images.pickaxe;
+    if (imgToDraw && imgToDraw.complete) {
+        const isGun = ['pistol', 'rifle', 'shotgun'].includes(itemKey);
+        const itemWidth = isGun ? 40 : 40;
+        const itemHeight = isGun ? 20 : 40;
+        ctx.drawImage(imgToDraw, 10, -itemHeight / 2, itemWidth, itemHeight);
+    }
+    ctx.restore();
+}
+
+function drawResource(res) {
+    if (res.radius === TREE_SIZE) {
+        const treeImg = images.tree;
+        if (treeImg && treeImg.complete) {
+            const size = res.radius * 3;
+            ctx.drawImage(treeImg, res.x - size / 2, res.y - size / 1.5, size, size);
+        } else {
+            ctx.fillStyle = '#2d5016';
+            ctx.beginPath();
+            ctx.arc(res.x, res.y, res.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    } else {
+        const rockImg = images.rock;
+        if (rockImg && rockImg.complete) {
+            const size = res.radius * 2.5;
+            ctx.drawImage(rockImg, res.x - size / 2, res.y - size / 2, size, size);
+        } else {
+            ctx.fillStyle = '#666';
+            ctx.beginPath();
+            ctx.arc(res.x, res.y, res.radius, 0, Math.PI * 2);
+            ctx.fill();
+        }
+    }
+    if (res.health < res.maxHealth) {
+        drawHealthBar(res, res.radius === TREE_SIZE ? '#4CAF50' : '#999');
+    }
+}
+
+function drawHealthBar(entity, color) {
+    const barWidth = 2 * entity.radius;
+    const barHeight = 5;
+    const yOffset = entity.radius + 10;
+    ctx.fillStyle = '#333';
+    ctx.fillRect(entity.x - barWidth / 2, entity.y - yOffset, barWidth, barHeight);
+    ctx.fillStyle = color;
+    ctx.fillRect(entity.x - barWidth / 2, entity.y - yOffset, barWidth * (entity.health / entity.maxHealth), barHeight);
+}
+
 function startIntermission() {
     gameState.phase = "intermission";
     gameState.intermissionTimer = INTERMISSION_TIME;
@@ -106,21 +231,16 @@ function startWave() {
 function endWave() {
     gameState.wave++;
     updateUI();
-    // NEW: Check for respawns at the end of a wave
     checkRespawns();
     startIntermission();
 }
 
-// NEW: Respawn Logic
 function checkRespawns() {
     const RESPAWN_WAVE_COUNT = 5;
     const BUILD_CHECK_RADIUS = 100;
-
     for (let i = destroyedResources.length - 1; i >= 0; i--) {
         const res = destroyedResources[i];
-        
         if (gameState.wave >= res.destroyedAtWave + RESPAWN_WAVE_COUNT) {
-            // Check for nearby walls
             let canRespawn = true;
             for (const wall of walls) {
                 if (Math.hypot(res.x - (wall.x + WALL_SIZE / 2), res.y - (wall.y + WALL_SIZE / 2)) < BUILD_CHECK_RADIUS) {
@@ -128,19 +248,150 @@ function checkRespawns() {
                     break;
                 }
             }
-
             if (canRespawn) {
                 if (res.type === 'tree') {
                     trees.push({ x: res.x, y: res.y, health: 10, maxHealth: 10, radius: TREE_SIZE });
                 } else if (res.type === 'rock') {
                     rocks.push({ x: res.x, y: res.y, health: 15, maxHealth: 15, radius: ROCK_SIZE });
                 }
-                destroyedResources.splice(i, 1); // Remove from graveyard
+                destroyedResources.splice(i, 1);
             }
         }
     }
 }
 
+function updateUI() {
+    const healthPercent = (player.health / player.maxHealth) * 100;
+    healthBar.style.setProperty('--health-width', healthPercent + '%');
+    healthText.textContent = `${Math.ceil(player.health)}/${player.maxHealth}`;
+    woodCountEl.textContent = player.resources.wood;
+    stoneCountEl.textContent = player.resources.stone;
+    cashCountEl.textContent = player.resources.cash;
+    waveNumberEl.textContent = gameState.wave;
+    timerEl.textContent = gameState.intermissionTimer;
+    const equippedKey = player.equipped;
+    let displayName = 'Pistol';
+    let imgKey = 'gun';
+    let slot = 1;
+    if (equippedKey === 'rifle') { displayName = 'Rifle'; imgKey = 'gun1'; }
+    if (equippedKey === 'shotgun') { displayName = 'Shotgun'; imgKey = 'gun2'; }
+    if (equippedKey === 'axe') { displayName = 'Axe'; imgKey = 'axe'; slot = 2; }
+    if (equippedKey === 'pickaxe') { displayName = 'Pickaxe'; imgKey = 'pickaxe'; slot = 3; }
+    equippedItemImgEl.src = images[imgKey]?.src || '';
+    equippedItemNameEl.textContent = `[${slot}] ${displayName}`;
+}
+
+function showFeedback(message) {
+    feedbackMessageEl.textContent = message;
+    feedbackMessageEl.classList.remove('hidden');
+    setTimeout(() => {
+        feedbackMessageEl.classList.add('hidden');
+    }, 2000);
+}
+
+function handleKeyPress(e) {
+    if (gameState.gameOver || shopOpen) {
+        if (e.key.toLowerCase() === 'b' && shopOpen) {
+            toggleShop();
+        }
+        return;
+    }
+    const key = e.key.toLowerCase();
+    if (key === '1') {
+        const guns = ['pistol', 'rifle', 'shotgun'];
+        const ownedGuns = guns.filter(g => player.inventory[g]);
+        const currentIndex = ownedGuns.indexOf(player.equipped);
+        if (currentIndex !== -1) {
+            const nextIndex = (currentIndex + 1) % ownedGuns.length;
+            player.equipped = ownedGuns[nextIndex];
+        } else {
+            player.equipped = ownedGuns[0];
+        }
+        setWeaponStats();
+        updateUI();
+    }
+    if (key === '2' && player.inventory.axe) {
+        player.equipped = 'axe';
+        updateUI();
+    }
+    if (key === '3' && player.inventory.pickaxe) {
+        player.equipped = 'pickaxe';
+        updateUI();
+    }
+    if (key === 'b' && gameState.phase === 'intermission') {
+        toggleShop();
+    }
+    if (key === 'q' && gameState.phase === 'intermission') {
+        placeWall();
+    }
+}
+
+function handleMouseDown() {
+    if (gameState.gameOver || shopOpen) return;
+    const now = Date.now();
+    const isGun = ['pistol', 'rifle', 'shotgun'].includes(player.equipped);
+    if (isGun) {
+        if (now - lastActionTime >= player.fireRate) {
+            lastActionTime = now;
+            shoot();
+        }
+    } else {
+        if (now - lastActionTime >= 500) {
+            lastActionTime = now;
+            if (player.equipped === 'axe') useAxe();
+            if (player.equipped === 'pickaxe') usePickaxe();
+        }
+    }
+}
+
+function shoot() {
+    const fireLocation = {
+        x: player.x + Math.cos(player.angle) * 20,
+        y: player.y + Math.sin(player.angle) * 20
+    };
+    if (player.equipped === 'shotgun') {
+        const spread = 0.25;
+        for (let i = -1; i <= 1; i++) {
+            const angle = player.angle + (i * spread);
+            bullets.push({
+                x: fireLocation.x,
+                y: fireLocation.y,
+                vx: Math.cos(angle) * BULLET_SPEED,
+                vy: Math.sin(angle) * BULLET_SPEED,
+                radius: BULLET_SIZE,
+                damage: player.damage
+            });
+        }
+    } else {
+        bullets.push({
+            x: fireLocation.x,
+            y: fireLocation.y,
+            vx: Math.cos(player.angle) * BULLET_SPEED,
+            vy: Math.sin(player.angle) * BULLET_SPEED,
+            radius: BULLET_SIZE,
+            damage: player.damage
+        });
+    }
+}
+
+function placeWall() {
+    if (player.resources.stone < 10) {
+        showFeedback("Not enough stone!");
+        return;
+    }
+    const gridX = Math.floor(mouse.worldX / GRID_SIZE) * GRID_SIZE;
+    const gridY = Math.floor(mouse.worldY / GRID_SIZE) * GRID_SIZE;
+    if (walls.some(w => w.x === gridX && w.y === gridY)) return;
+    player.resources.stone -= 10;
+    walls.push({
+        x: gridX,
+        y: gridY,
+        width: WALL_SIZE,
+        height: WALL_SIZE
+    });
+    showFeedback("Wall Placed!");
+    updateUI();
+}
 
 function useAxe() {
     if (gameState.phase !== 'intermission') return;
@@ -150,8 +401,12 @@ function useAxe() {
             tree.health--;
             if (tree.health <= 0) {
                 player.resources.wood += 20;
-                // NEW: Add to graveyard instead of just deleting
-                destroyedResources.push({ x: tree.x, y: tree.y, type: 'tree', destroyedAtWave: gameState.wave });
+                destroyedResources.push({
+                    x: tree.x,
+                    y: tree.y,
+                    type: 'tree',
+                    destroyedAtWave: gameState.wave
+                });
                 trees.splice(i, 1);
                 showFeedback("+20 Wood");
             } else {
@@ -171,8 +426,12 @@ function usePickaxe() {
             rock.health--;
             if (rock.health <= 0) {
                 player.resources.stone += 10;
-                 // NEW: Add to graveyard instead of just deleting
-                destroyedResources.push({ x: rock.x, y: rock.y, type: 'rock', destroyedAtWave: gameState.wave });
+                destroyedResources.push({
+                    x: rock.x,
+                    y: rock.y,
+                    type: 'rock',
+                    destroyedAtWave: gameState.wave
+                });
                 rocks.splice(i, 1);
                 showFeedback("+10 Stone");
             } else {
@@ -184,28 +443,118 @@ function usePickaxe() {
     }
 }
 
-// --- Event Listeners and Init ---
-window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
-window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; handleKeyPress(e); });
-window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.clientY; mouse.worldX = mouse.x + camera.x; mouse.worldY = mouse.y + camera.y; player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.y); });
+function toggleShop() {
+    if (gameState.phase !== 'intermission' && !shopOpen) return;
+    if (gameState.gameOver) return;
+    shopOpen = !shopOpen;
+    orderStation.classList.toggle("hidden", !shopOpen);
+}
+
+function buyItem(item, cost) {
+    if (player.resources.cash < cost) return;
+    player.resources.cash -= cost;
+    if (item === 'pickaxe') {
+        player.inventory.pickaxe = true;
+    } else {
+        player.inventory[item] = true;
+        player.equipped = item;
+        setWeaponStats();
+    }
+    const btn = document.querySelector(`.buy-btn[data-item="${item}"]`);
+    btn.disabled = true;
+    btn.nextElementSibling.classList.remove('hidden');
+    updateUI();
+}
+
+function gameOver() {
+    gameState.gameOver = true;
+    clearInterval(intermissionInterval);
+    finalWaveEl.textContent = gameState.wave;
+    gameOverScreen.classList.remove("hidden");
+}
+
+function generateRocks() {
+    const cX = WORLD_SIZE / 2,
+        cY = WORLD_SIZE / 2,
+        iR = 900,
+        oR = 1300;
+    for (let i = 0; i < 40; i++) {
+        const a = Math.random() * 2 * Math.PI,
+            d = iR + Math.random() * (oR - iR);
+        rocks.push({
+            x: cX + Math.cos(a) * d,
+            y: cY + Math.sin(a) * d,
+            health: 15,
+            maxHealth: 15,
+            radius: ROCK_SIZE
+        });
+    }
+}
+
+function generateTrees() {
+    const cX = WORLD_SIZE / 2,
+        cY = WORLD_SIZE / 2,
+        iR = 400,
+        oR = 800;
+    for (let i = 0; i < 60; i++) {
+        const a = Math.random() * 2 * Math.PI,
+            d = iR + Math.random() * (oR - iR);
+        trees.push({
+            x: cX + Math.cos(a) * d,
+            y: cY + Math.sin(a) * d,
+            health: 10,
+            maxHealth: 10,
+            radius: TREE_SIZE
+        });
+    }
+}
+
+function drawZombie(z) {
+    ctx.fillStyle = "#2d5c2d";
+    ctx.beginPath();
+    ctx.arc(z.x, z.y, z.radius, 0, 2 * Math.PI);
+    ctx.fill();
+    drawHealthBar(z, "#ff4444");
+}
+
+function drawWall(wall) {
+    ctx.fillStyle = "#8B4513";
+    ctx.strokeStyle = "#654321";
+    ctx.lineWidth = 2;
+    ctx.fillRect(wall.x, wall.y, wall.width, wall.height);
+    ctx.strokeRect(wall.x, wall.y, wall.width, wall.height);
+}
+
+function drawBullet(b) {
+    ctx.fillStyle = "#ffff00";
+    ctx.beginPath();
+    ctx.arc(b.x, b.y, b.radius, 0, 2 * Math.PI);
+    ctx.fill();
+}
+
+window.addEventListener('resize', () => {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+});
+window.addEventListener('keydown', (e) => {
+    keys[e.key.toLowerCase()] = true;
+    handleKeyPress(e);
+});
+window.addEventListener('keyup', (e) => {
+    keys[e.key.toLowerCase()] = false;
+});
+canvas.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.worldX = mouse.x + camera.x;
+    mouse.worldY = mouse.y + camera.y;
+    player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.y);
+});
 canvas.addEventListener('mousedown', handleMouseDown);
 startWaveBtn.addEventListener('click', startWave);
 playAgainBtn.addEventListener('click', init);
-document.querySelectorAll('.buy-btn').forEach(btn => { btn.addEventListener('click', () => buyItem(btn.dataset.item, parseInt(btn.dataset.cost))); });
-init();
+document.querySelectorAll('.buy-btn').forEach(btn => {
+    btn.addEventListener('click', () => buyItem(btn.dataset.item, parseInt(btn.dataset.cost)));
+});
 
-// --- Minified Helper Functions (No changes here, just pasting them for completeness) ---
-function generateRocks(){const cX=WORLD_SIZE/2,cY=WORLD_SIZE/2,iR=900,oR=1300;for(let i=0;i<40;i++){const a=Math.random()*2*Math.PI,d=iR+Math.random()*(oR-iR);rocks.push({x:cX+Math.cos(a)*d,y:cY+Math.sin(a)*d,health:15,maxHealth:15,radius:ROCK_SIZE})}}
-function generateTrees(){const cX=WORLD_SIZE/2,cY=WORLD_SIZE/2,iR=400,oR=800;for(let i=0;i<60;i++){const a=Math.random()*2*Math.PI,d=iR+Math.random()*(oR-iR);trees.push({x:cX+Math.cos(a)*d,y:cY+Math.sin(a)*d,health:10,maxHealth:10,radius:TREE_SIZE})}}
-function handleCollisions(){for(let i=bullets.length-1;i>=0;i--){const b=bullets[i];let t=!1;for(const o of walls)if(b.x>o.x&&b.x<o.x+o.width&&b.y>o.y&&b.y<o.y+o.height){bullets.splice(i,1),t=!0;break}if(t)continue;for(let o=zombies.length-1;o>=0;o--){const l=zombies[o];if(Math.hypot(b.x-l.x,b.y-l.y)<l.radius+b.radius){l.health-=b.damage,bullets.splice(i,1),l.health<=0&&(player.resources.cash+=10,zombies.splice(o,1),updateUI()),t=!0;break}}if(t)continue}for(const t of zombies)if(Math.hypot(t.x-player.x,t.y-player.y)<t.radius+player.radius){player.health-=t.damage,player.health<=0&&(player.health=0,gameOver()),updateUI()}}
-function drawZombie(t){ctx.fillStyle="#2d5c2d",ctx.beginPath(),ctx.arc(t.x,t.y,t.radius,0,2*Math.PI),ctx.fill(),drawHealthBar(t,"#ff4444")}
-function drawWall(t){ctx.fillStyle="#8B4513",ctx.strokeStyle="#654321",ctx.lineWidth=2,ctx.fillRect(t.x,t.y,t.width,t.height),ctx.strokeRect(t.x,t.y,t.width,t.height)}
-function drawBullet(t){ctx.fillStyle="#ffff00",ctx.beginPath(),ctx.arc(t.x,t.y,t.radius,0,2*Math.PI),ctx.fill()}
-function drawResource(t){if(t.radius===TREE_SIZE){const o=images.tree;o&&o.complete?ctx.drawImage(o,t.x-45,t.y-60,90,90):(ctx.fillStyle="#2d5016",ctx.beginPath(),ctx.arc(t.x,t.y,t.radius,0,2*Math.PI),ctx.fill())}else{const o=images.rock;o&&o.complete?ctx.drawImage(o,t.x-31.25,t.y-31.25,62.5,62.5):(ctx.fillStyle="#666",ctx.beginPath(),ctx.arc(t.x,t.y,t.radius,0,2*Math.PI),ctx.fill())}t.health<t.maxHealth&&drawHealthBar(t,t.radius===TREE_SIZE?"#4CAF50":"#999")}
-function drawHealthBar(t,o){const l=2*t.radius,e=5,s=t.radius+10;ctx.fillStyle="#333",ctx.fillRect(t.x-l/2,t.y-s,l,e),ctx.fillStyle=o,ctx.fillRect(t.x-l/2,t.y-s,l*(t.health/t.maxHealth),e)}
-function spawnZombies(){const t=5+3*gameState.wave;for(let o=0;o<t;o++){const l=Math.floor(4*Math.random());let e,s;switch(l){case 0:e=Math.random()*WORLD_SIZE,s=-ZOMBIE_SIZE;break;case 1:e=WORLD_SIZE+ZOMBIE_SIZE,s=Math.random()*WORLD_SIZE;break;case 2:e=Math.random()*WORLD_SIZE,s=WORLD_SIZE+ZOMBIE_SIZE;break;case 3:e=-ZOMBIE_SIZE,s=Math.random()*WORLD_SIZE}zombies.push({x:e,y:s,radius:ZOMBIE_SIZE,speed:1.5+.1*gameState.wave,health:30+5*gameState.wave,maxHealth:30+5*gameState.wave,damage:5})}}
-function gameOver(){gameState.gameOver=!0,clearInterval(intermissionInterval),finalWaveEl.textContent=gameState.wave,gameOverScreen.classList.remove("hidden")}
-function showFeedback(t){feedbackMessageEl.textContent=t,feedbackMessageEl.classList.remove("hidden"),setTimeout(()=>{feedbackMessageEl.classList.add("hidden")},2e3)}
-function placeWall(){if(player.resources.stone<10)return void showFeedback("Not enough stone!");const t=Math.floor(mouse.worldX/GRID_SIZE)*GRID_SIZE,o=Math.floor(mouse.worldY/GRID_SIZE)*GRID_SIZE;if(!walls.some(l=>l.x===t&&l.y===o)){player.resources.stone-=10,walls.push({x:t,y:o,width:WALL_SIZE,height:WALL_SIZE}),showFeedback("Wall Placed!"),updateUI()}}
-function toggleShop(){"intermission"===gameState.phase&&!shopOpen||!gameState.gameOver&&(shopOpen=!shopOpen,orderStation.classList.toggle("hidden",!shopOpen))}
+init();
