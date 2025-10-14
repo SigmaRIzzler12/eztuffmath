@@ -20,6 +20,7 @@ body {
 #gameCanvas {
     display: block;
     background-color: #2a2a2a;
+    cursor: crosshair;
 }
 
 #ui {
@@ -33,6 +34,23 @@ body {
 
 #ui > * {
     pointer-events: auto;
+}
+
+/* NEW: Top Center Feedback Message */
+#feedback-message {
+    position: absolute;
+    top: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 10px 25px;
+    border-radius: 8px;
+    font-size: 18px;
+    font-weight: bold;
+    border: 2px solid #ffd700;
+    z-index: 50;
+    transition: opacity 0.5s, top 0.5s;
 }
 
 /* Top Left - Stats */
@@ -67,7 +85,7 @@ body {
     top: 0;
     left: 0;
     height: 100%;
-    width: 100%;
+    width: var(--health-width, 100%); /* Controlled by JS */
     background: linear-gradient(90deg, #ff4444, #ff6666);
     transition: width 0.3s;
 }
@@ -151,31 +169,6 @@ body {
     background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
 }
 
-/* Build Mode Indicator */
-#build-mode-indicator {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.9);
-    padding: 20px 40px;
-    border-radius: 10px;
-    color: white;
-    text-align: center;
-    border: 3px solid #ffd700;
-}
-
-#build-mode-indicator span {
-    font-size: 24px;
-    font-weight: bold;
-    color: #ffd700;
-}
-
-#build-mode-indicator p {
-    margin: 10px 0 5px 0;
-    font-size: 16px;
-}
-
 /* Order Station */
 #order-station {
     position: absolute;
@@ -197,6 +190,7 @@ body {
     max-width: 600px;
     width: 90%;
     color: white;
+    text-align: center;
 }
 
 #order-station-content h2 {
@@ -268,11 +262,6 @@ body {
     margin-left: 10px;
     color: #66ff66;
     font-weight: bold;
-}
-
-#close-shop-btn {
-    width: 100%;
-    background: linear-gradient(135deg, #f5576c 0%, #f093fb 100%);
 }
 
 /* Game Over */
