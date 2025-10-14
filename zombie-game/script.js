@@ -18,6 +18,7 @@ const timerEl = document.getElementById('timer');
 const timerContainer = document.getElementById('timer-container');
 const startWaveBtn = document.getElementById('start-wave-btn');
 const orderStation = document.getElementById('order-station');
+const closeShopBtn = document.getElementById('close-shop-btn'); // This line is re-added
 const gameOverScreen = document.getElementById('game-over');
 const finalWaveEl = document.getElementById('final-wave');
 const playAgainBtn = document.getElementById('play-again-btn');
@@ -206,8 +207,14 @@ function showFeedback(message) {
 }
 
 function handleKeyPress(e) {
-    if (gameState.gameOver || shopOpen) return;
+    if (gameState.gameOver) return;
     const key = e.key.toLowerCase();
+    
+    // Disallow switching items while shop is open
+    if (shopOpen) {
+        if (key === 'b') toggleShop(); // Still allow closing with B
+        return;
+    }
     
     // Switch equipped item
     if (key === '1') { player.equipped = player.inventory.betterGun ? 'betterGun' : 'gun'; updateUI(); }
@@ -317,6 +324,7 @@ canvas.addEventListener('mousemove', (e) => { mouse.x = e.clientX; mouse.y = e.c
 canvas.addEventListener('mousedown', handleMouseDown);
 startWaveBtn.addEventListener('click', startWave);
 playAgainBtn.addEventListener('click', init);
+closeShopBtn.addEventListener('click', toggleShop); // This line is re-added
 document.querySelectorAll('.buy-btn').forEach(btn => { btn.addEventListener('click', () => buyItem(btn.dataset.item, parseInt(btn.dataset.cost))); });
 
 // --- Dummy function stubs for brevity ---
