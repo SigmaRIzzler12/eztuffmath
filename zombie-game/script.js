@@ -5,6 +5,7 @@ canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
 
 // --- UI Elements ---
+const feedbackMessageEl = document.getElementById('feedback-message');
 const healthBar = document.getElementById('health-bar');
 const healthText = document.getElementById('health-text');
 const woodCountEl = document.getElementById('wood-count');
@@ -14,9 +15,7 @@ const waveNumberEl = document.getElementById('wave-number');
 const timerEl = document.getElementById('timer');
 const timerContainer = document.getElementById('timer-container');
 const startWaveBtn = document.getElementById('start-wave-btn');
-const buildModeIndicator = document.getElementById('build-mode-indicator');
 const orderStation = document.getElementById('order-station');
-const closeShopBtn = document.getElementById('close-shop-btn');
 const gameOverScreen = document.getElementById('game-over');
 const finalWaveEl = document.getElementById('final-wave');
 const playAgainBtn = document.getElementById('play-again-btn');
@@ -25,9 +24,10 @@ const playAgainBtn = document.getElementById('play-again-btn');
 const WORLD_SIZE = 3000;
 const GRID_SIZE = 50;
 const PLAYER_SIZE = 20;
+const GATHER_RANGE = 50; // How close player must be to gather
 const ZOMBIE_SIZE = 18;
 const TREE_SIZE = 30;
-const ROCK_SIZE = 25; // Adjusted for better visuals
+const ROCK_SIZE = 25;
 const WALL_SIZE = 50;
 const BULLET_SIZE = 5;
 const BULLET_SPEED = 12;
@@ -37,7 +37,7 @@ const INTERMISSION_TIME = 60;
 let gameState = { phase: 'intermission', wave: 1, intermissionTimer: INTERMISSION_TIME, gameOver: false };
 let player, zombies, trees, rocks, walls, bullets;
 let keys = {}, mouse = { x: 0, y: 0, worldX: 0, worldY: 0 };
-let buildMode = false, shopOpen = false;
+let shopOpen = false;
 let camera = { x: 0, y: 0 };
 let lastShotTime = 0;
 let intermissionInterval;
@@ -58,7 +58,7 @@ function init() {
         lastChopTime: 0, damage: 10, fireRate: 300
     };
     zombies = []; trees = []; rocks = []; walls = []; bullets = [];
-    buildMode = false; shopOpen = false;
+    shopOpen = false;
     
     // Generate world
     generateTrees();
@@ -69,7 +69,6 @@ function init() {
     orderStation.classList.add('hidden');
     startWaveBtn.classList.remove('hidden');
     timerContainer.classList.remove('hidden');
-    buildModeIndicator.classList.add('hidden');
     document.querySelectorAll('.buy-btn').forEach(btn => {
         btn.disabled = false;
         const ownedEl = btn.nextElementSibling;
@@ -198,7 +197,7 @@ function handleCollisions() {
     // Zombies vs Player
     for (const z of zombies) {
         if (Math.hypot(z.x - player.x, z.y - player.y) < z.radius + player.radius) {
-            player.health -= z.damage; // FIXED DAMAGE CALCULATION
+            player.health -= z.damage;
             if (player.health <= 0) {
                 player.health = 0;
                 gameOver();
@@ -212,11 +211,9 @@ function handleCollisions() {
 function drawGame() {
     ctx.clearRect(0, 0, canvas.width, canvas.height);
     
-    // Move canvas to camera position
     ctx.save();
     ctx.translate(-camera.x, -camera.y);
 
-    // Draw world elements
     ctx.fillStyle = '#3a5a3a';
     ctx.fillRect(0, 0, WORLD_SIZE, WORLD_SIZE);
     
@@ -231,13 +228,11 @@ function drawGame() {
 }
 
 function drawPlayer() {
-    // Player body
     ctx.fillStyle = '#00ffff';
     ctx.beginPath();
     ctx.arc(player.x, player.y, player.radius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Player Gun
     ctx.save();
     ctx.translate(player.x, player.y);
     ctx.rotate(player.angle);
@@ -315,8 +310,6 @@ function startWave() {
     if (gameState.phase !== 'intermission') return;
     clearInterval(intermissionInterval);
     gameState.phase = 'wave';
-    buildMode = false;
-    buildModeIndicator.classList.add('hidden');
     startWaveBtn.classList.add('hidden');
     timerContainer.classList.add('hidden');
     spawnZombies();
@@ -355,51 +348,46 @@ function gameOver() {
 
 // --- UI and Input Handlers ---
 function updateUI() {
-    // Health
     const healthPercent = (player.health / player.maxHealth) * 100;
-    healthBar.style.width = healthPercent + '%';
+    healthBar.style.setProperty('--health-width', healthPercent + '%');
     healthText.textContent = `${Math.ceil(player.health)}/${player.maxHealth}`;
     
-    // Resources
     woodCountEl.textContent = player.resources.wood;
     stoneCountEl.textContent = player.resources.stone;
     cashCountEl.textContent = player.resources.cash;
 
-    // Wave and Timer
     waveNumberEl.textContent = gameState.wave;
     timerEl.textContent = gameState.intermissionTimer;
 }
 
+function showFeedback(message) {
+    feedbackMessageEl.textContent = message;
+    feedbackMessageEl.classList.remove('hidden');
+    setTimeout(() => {
+        feedbackMessageEl.classList.add('hidden');
+    }, 2000); // Message disappears after 2 seconds
+}
+
 function handleKeyPress(e) {
-    if (gameState.gameOver) return;
+    if (gameState.gameOver || shopOpen) return;
     const key = e.key.toLowerCase();
-    if (key === 'q' && gameState.phase === 'intermission') {
-        buildMode = !buildMode;
-        buildModeIndicator.classList.toggle('hidden', !buildMode);
-    }
+
     if (key === 'b' && gameState.phase === 'intermission') {
         toggleShop();
     }
-}
-
-function handleMouseMove(e) {
-    mouse.x = e.clientX;
-    mouse.y = e.clientY;
-    mouse.worldX = mouse.x + camera.x;
-    mouse.worldY = mouse.y + camera.y;
-    player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
+    // BUILD with Q
+    if (key === 'q' && gameState.phase === 'intermission') {
+        placeWall();
+    }
+    // GATHER with F
+    if (key === 'f' && gameState.phase === 'intermission') {
+        gatherResource();
+    }
 }
 
 function handleMouseDown() {
     if (gameState.gameOver || shopOpen) return;
-
-    if (buildMode && gameState.phase === 'intermission') {
-        placeWall();
-    } else {
-        if (!checkResourceGathering()) {
-            shoot();
-        }
-    }
+    shoot();
 }
 
 function shoot() {
@@ -418,49 +406,61 @@ function shoot() {
 }
 
 function placeWall() {
-    if (player.resources.stone < 10) return;
+    if (player.resources.stone < 10) {
+        showFeedback("Not enough stone!");
+        return;
+    }
     const gridX = Math.floor(mouse.worldX / GRID_SIZE) * GRID_SIZE;
     const gridY = Math.floor(mouse.worldY / GRID_SIZE) * GRID_SIZE;
     if (walls.some(w => w.x === gridX && w.y === gridY)) return;
     
     player.resources.stone -= 10;
     walls.push({ x: gridX, y: gridY, width: WALL_SIZE, height: WALL_SIZE });
+    showFeedback("Wall Placed!");
     updateUI();
 }
 
-function checkResourceGathering() {
+function gatherResource() {
     const now = Date.now();
-    if (now - player.lastChopTime < 2000) return false;
+    if (now - player.lastChopTime < 2000) return; // 2-second cooldown
 
-    // Check trees
+    // Check for nearby trees
     for (let i = trees.length - 1; i >= 0; i--) {
         const tree = trees[i];
-        if (player.inventory.axe && Math.hypot(mouse.worldX - tree.x, mouse.worldY - tree.y) < tree.radius) {
+        if (player.inventory.axe && Math.hypot(player.x - tree.x, player.y - tree.y) < GATHER_RANGE) {
             tree.health--;
             player.lastChopTime = now;
             if (tree.health <= 0) {
                 player.resources.wood += 20;
                 trees.splice(i, 1);
+                showFeedback("+20 Wood");
+            } else {
+                showFeedback("Chop!");
             }
             updateUI();
-            return true;
+            return; // Only gather from one resource at a time
         }
     }
-    // Check rocks
+    // Check for nearby rocks
     for (let i = rocks.length - 1; i >= 0; i--) {
         const rock = rocks[i];
-        if (player.inventory.pickaxe && Math.hypot(mouse.worldX - rock.x, mouse.worldY - rock.y) < rock.radius) {
+        if (player.inventory.pickaxe && Math.hypot(player.x - rock.x, player.y - rock.y) < GATHER_RANGE) {
             rock.health--;
             player.lastChopTime = now;
             if (rock.health <= 0) {
                 player.resources.stone += 15;
                 rocks.splice(i, 1);
+                showFeedback("+15 Stone");
+            } else {
+                showFeedback("Mine!");
             }
             updateUI();
-            return true;
+            return; 
+        } else if (!player.inventory.pickaxe && Math.hypot(player.x - rock.x, player.y - rock.y) < GATHER_RANGE) {
+            showFeedback("You need a pickaxe!");
+            return;
         }
     }
-    return false;
 }
 
 // --- Shop Logic ---
@@ -496,10 +496,15 @@ function buyItem(item, cost) {
 window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
 window.addEventListener('keydown', (e) => { keys[e.key.toLowerCase()] = true; handleKeyPress(e); });
 window.addEventListener('keyup', (e) => { keys[e.key.toLowerCase()] = false; });
-canvas.addEventListener('mousemove', handleMouseMove);
+canvas.addEventListener('mousemove', (e) => {
+    mouse.x = e.clientX;
+    mouse.y = e.clientY;
+    mouse.worldX = mouse.x + camera.x;
+    mouse.worldY = mouse.y + camera.y;
+    player.angle = Math.atan2(mouse.worldY - player.y, mouse.worldX - player.x);
+});
 canvas.addEventListener('mousedown', handleMouseDown);
 startWaveBtn.addEventListener('click', startWave);
-closeShopBtn.addEventListener('click', toggleShop);
 playAgainBtn.addEventListener('click', init);
 document.querySelectorAll('.buy-btn').forEach(btn => {
     btn.addEventListener('click', () => buyItem(btn.dataset.item, parseInt(btn.dataset.cost)));
