@@ -43,3 +43,22 @@ header h1 {
     margin-top: 0;
     color: #3498db;
 }
+/* --- NEW: Footer Styles --- */
+footer {
+    margin-top: 60px; /* Adds space above the footer */
+    padding: 20px;
+    border-top: 1px solid #7f8c8d; /* A subtle line to separate it */
+    color: #bdc3c7; /* A light grey for less emphasis */
+    font-size: 0.9em;
+}
+
+footer p {
+    margin: 8px 0; /* Adds a little space between the lines of text */
+}
+
+.disclaimer {
+    max-width: 600px; /* Keeps the long text from stretching too wide */
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.4; /* Improves readability */
+}
