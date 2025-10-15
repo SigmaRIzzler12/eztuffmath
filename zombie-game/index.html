@@ -3,17 +3,94 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Zombie Survival Game</title>
+    <title>Zombie Survival - Multiplayer</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="game-container">
+    <!-- Main Menu / Lobby Screen -->
+    <div id="main-menu">
+        <div id="main-menu-content">
+            <h1>🧟 ZOMBIE SURVIVAL</h1>
+            <h2>Multiplayer</h2>
+            
+            <div id="connection-status">
+                <span id="status-indicator" class="status-disconnected">●</span>
+                <span id="status-text">Connecting to server...</span>
+            </div>
+            
+            <div id="menu-buttons">
+                <button id="create-room-btn" class="menu-btn" disabled>Create Private Room</button>
+                <button id="join-room-btn" class="menu-btn" disabled>Join Private Room</button>
+                <button id="refresh-rooms-btn" class="menu-btn" disabled>Refresh Public Rooms</button>
+            </div>
+            
+            <div id="public-rooms">
+                <h3>Public Rooms</h3>
+                <div id="room-list">
+                    <p class="no-rooms">No rooms available</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Room Code Input Modal -->
+    <div id="join-room-modal" class="modal hidden">
+        <div class="modal-content">
+            <h2>Join Private Room</h2>
+            <input type="text" id="room-code-input" placeholder="Enter Room Code (e.g., ABCD)" maxlength="4">
+            <div class="modal-buttons">
+                <button id="confirm-join-btn" class="menu-btn">Join</button>
+                <button id="cancel-join-btn" class="menu-btn">Cancel</button>
+            </div>
+            <p id="join-error" class="error-text hidden"></p>
+        </div>
+    </div>
+
+    <!-- Staging Area (Room Lobby) -->
+    <div id="staging-area" class="hidden">
+        <div id="staging-content">
+            <h1>Room Lobby</h1>
+            <div id="room-code-display">
+                <span>Room Code:</span>
+                <span id="room-code" class="code">----</span>
+            </div>
+            
+            <div id="player-slots">
+                <div class="player-slot" data-slot="0">
+                    <div class="slot-circle blue"></div>
+                    <span class="slot-label">Player 1 (Host)</span>
+                </div>
+                <div class="player-slot" data-slot="1">
+                    <div class="slot-circle purple"></div>
+                    <span class="slot-label">Player 2</span>
+                </div>
+                <div class="player-slot" data-slot="2">
+                    <div class="slot-circle red"></div>
+                    <span class="slot-label">Player 3</span>
+                </div>
+                <div class="player-slot" data-slot="3">
+                    <div class="slot-circle orange"></div>
+                    <span class="slot-label">Player 4</span>
+                </div>
+            </div>
+            
+            <div id="staging-buttons">
+                <button id="start-game-btn" class="menu-btn host-only" disabled>Start Game</button>
+                <button id="leave-room-btn" class="menu-btn">Leave Room</button>
+            </div>
+            
+            <p id="staging-status">Waiting for players...</p>
+        </div>
+    </div>
+
+    <!-- Game Container (Hidden initially) -->
+    <div id="game-container" class="hidden">
         <canvas id="gameCanvas"></canvas>
         
         <div id="ui">
             <div id="equipped-item-ui">
-                <img id="equipped-item-img" src="gun.png" alt="Equipped Item">
-                <span id="equipped-item-name">Pistol</span>
+                <img id="equipped-item-img" src="images/gun.png" alt="Equipped Item">
+                <span id="equipped-item-name">[1] Pistol</span>
             </div>
 
             <div id="feedback-message" class="hidden"></div>
@@ -43,7 +120,7 @@
             </div>
 
             <div id="bottom-right">
-                <button id="start-wave-btn" class="game-btn">START WAVE</button>
+                <button id="start-wave-btn" class="game-btn host-only">START WAVE</button>
             </div>
 
             <div id="order-station" class="hidden">
@@ -59,10 +136,17 @@
                             <span class="owned hidden">✓ Owned</span>
                         </div>
                         <div class="shop-item">
-                            <h3>🔫 Better Gun</h3>
-                            <p>Increased damage and fire rate</p>
+                            <h3>🔫 Rifle</h3>
+                            <p>Faster fire rate, moderate damage</p>
                             <p class="price">Cost: $100</p>
-                            <button class="buy-btn" data-item="better-gun" data-cost="100">Buy</button>
+                            <button class="buy-btn" data-item="rifle" data-cost="100">Buy</button>
+                            <span class="owned hidden">✓ Owned</span>
+                        </div>
+                        <div class="shop-item">
+                            <h3>💥 Shotgun</h3>
+                            <p>High damage, fires 3 bullets in a spread</p>
+                            <p class="price">Cost: $200</p>
+                            <button class="buy-btn" data-item="shotgun" data-cost="200">Buy</button>
                             <span class="owned hidden">✓ Owned</span>
                         </div>
                     </div>
@@ -74,11 +158,12 @@
                 <div id="game-over-content">
                     <h1>GAME OVER</h1>
                     <p>You survived to Wave <span id="final-wave">1</span></p>
-                    <button id="play-again-btn" class="game-btn">Play Again</button>
+                    <button id="return-lobby-btn" class="game-btn">Return to Lobby</button>
                 </div>
             </div>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
